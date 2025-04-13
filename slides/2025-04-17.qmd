@@ -199,7 +199,7 @@ Ein großer Vorteil von R ist, dass zahlreiche Hilfestellungen kostenlos im Web 
 ```{r}
 #| include: false
 
-firstday <- "2024-10-25"
+firstday <- "2025-04-17"
     
 meetings <- ymd(firstday) + c(0:20) * weeks(1)
 
@@ -207,39 +207,35 @@ meeting_headers <- paste0(day(meetings), ". ",months(meetings))
 
 ```
 
-*`r meeting_headers[3]`: Grundlagen*
+*`r meeting_headers[1]`: Einführung*
 
-*`r meeting_headers[4]`: Gruppengrößen darstellen*
+*`r meeting_headers[2]`: Grundlagen*
 
-*`r meeting_headers[6]`: Gestaltungsarten -- die "Geome"*
+*`r meeting_headers[4]`: Balkendiagramme*
 
-*`r meeting_headers[7]`: Daten umformen und weitere Darstellungsarten*
+*`r meeting_headers[5]`: Gestaltungsarten -- die "Geome"*
 
-*`r meeting_headers[8]`: Funktionen I: Unnötige Wiederholungen vermeiden*
+*`r meeting_headers[6]`: Übungswoche*
 
-*`r meeting_headers[9]`: Funktionen II: Grafiken automatisiert erstellen*
+*`r meeting_headers[8]`: Daten umformen und weitere Darstellungsarten*
 
 ## Ablauf
 
+*`r meeting_headers[9]`: Funktionen I: Unnötige Wiederholungen vermeiden*
+
+*`r meeting_headers[11]`: Funktionen II: Grafiken automatisiert erstellen*
+
 *`r meeting_headers[12]`: Trends im Zeitverlauf*
 
-*`r meeting_headers[13]`: Landkarten*
+*`r meeting_headers[13]`: Lineare Regressionsmodelle und Interaktionen grafisch darstellen*
 
-*`r meeting_headers[14]`: Lineare Regressionsmodelle und Interaktionen grafisch darstellen*
-
-*`r meeting_headers[15]`: Logistische Regression und vorhergesagte Wahrscheinlichkeiten*
-
-*`r meeting_headers[16]`: Rückblick, Fragen, Beratung*
-
-
+*`r meeting_headers[14]`: Logistische Regression und vorhergesagte Wahrscheinlichkeiten*
 
 ## Was Sie tun müssen
 
 1) Sie nehmen regelmäßig teil und wiederholen die Inhalte.
 
-2) An zwei Terminen müssen Sie eine Übungsaufgabe lösen und in Moodle hochladen.
-
-3) Sie schreiben eine Hausarbeit, in der Sie Datenvisualisierung verwenden.
+2) An einem Termin müssen Sie eine Übungsaufgabe lösen und in Moodle hochladen (aktive Teilnahme).
 
 ## R und RStudio über die Universität laden
 
