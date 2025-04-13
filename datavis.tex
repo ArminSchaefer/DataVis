@@ -1,0 +1,339 @@
+\documentclass[11pt,]{scrartcl}
+\usepackage[a4paper, left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm]{geometry}
+\newcommand*{\authorfont}{\fontfamily{phv}\selectfont}
+\usepackage{lmodern}
+\usepackage{abstract}
+\renewcommand{\abstractname}{}    % clear the title
+\renewcommand{\absnamepos}{empty} % originally center
+\newcommand{\blankline}{\quad\pagebreak[2]}
+\newenvironment{cslreferences}{}{}
+\providecommand{\tightlist}{%
+   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}} 
+\usepackage{longtable,booktabs}
+
+\usepackage{parskip}
+
+%\usepackage{titling}
+%\setlength{\droptitle}{-.25cm}
+
+%\setlength{\parindent}{0pt}
+%\setlength{\parskip}{6pt plus 2pt minus 1pt}
+%\setlength{\emergencystretch}{3em}  % prevent overfull lines 
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{graphicx}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\usepackage{lastpage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.0pt} 
+\lhead{}
+\chead{}
+\rhead{\footnotesize \textbf{Datenvisualisierung mit
+R} -- Wintersemester 2024/25}
+\lfoot{}
+\cfoot{\small \thepage/\pageref*{LastPage}}
+\rfoot{}
+
+\fancypagestyle{firststyle}
+{
+\renewcommand{\headrulewidth}{0pt}%
+   \fancyhf{}
+   \fancyfoot[C]{\small \thepage/\pageref*{LastPage}}
+   \fancyhead[R]{\includegraphics[width=5cm]{C:/Users/scarmin/OneDrive - JGU/Lehre/logo_polwi.jpg}}
+}
+\setlength{\headheight}{46.91196pt}
+%\def\labelitemi{--}
+%\usepackage{enumitem}
+%\setitemize[0]{leftmargin=25pt}
+%\setenumerate[0]{leftmargin=25pt}
+
+
+
+
+\makeatletter
+\@ifpackageloaded{hyperref}{}{%
+\ifxetex
+  \usepackage[setpagesize=false, % page size defined by xetex
+	unicode=false, % unicode breaks when used with xetex
+	xetex]{hyperref}
+\else
+  \usepackage[unicode=true]{hyperref}
+ \fi
+}
+\@ifpackageloaded{color}{
+	\PassOptionsToPackage{usenames,dvipsnames}{color}
+}{%
+	\usepackage[usenames,dvipsnames]{color}
+}
+\makeatother
+\hypersetup{breaklinks=true,
+			bookmarks=true,
+	pdfauthor={ ()},
+	pdfkeywords = {},  
+	pdftitle={\textbf{Datenvisualisierung mit R}},
+	colorlinks=true,
+	citecolor=blue,
+	urlcolor=blue,
+	linkcolor=magenta,
+	pdfborder={0 0 0}}
+\urlstyle{same}  % don't use monospace font for urls
+
+
+\setcounter{secnumdepth}{0}
+
+
+
+
+
+\usepackage{setspace}
+
+\title{\textbf{Datenvisualisierung mit R}}
+\author{\emph{Armin Schäfer}}
+\date{Wintersemester 2024/25}
+
+\begin{document}  
+	
+		\maketitle
+		
+	
+	\thispagestyle{firststyle}
+%	\thispagestyle{empty}
+	
+	
+	\noindent \begin{tabular*}{\textwidth}{ @{\extracolsep{\fill}} lr @{\extracolsep{\fill}}}
+		
+		
+	E-Mail: \texttt{\href{mailto:schaefer@politik.uni-mainz.de}{\nolinkurl{schaefer@politik.uni-mainz.de}}} & Uhrzeit: 8.00-10.00
+Uhr\\
+	Raum: GFG 01-512 & Büro: GFG 04-436\\
+		\hline
+	\end{tabular*}
+	
+	\vspace{2mm}
+	
+	
+	
+	\section{Beschreibung}\label{beschreibung}
+
+Inhalt: Der kompetente Umgang mit Daten und deren grafisch Darstellung
+werden immer wichtiger. Wissenschaftliche Ergebnisse werden immer
+häufiger grafisch dargestellt und nicht nur im Text beschrieben. Auch im
+Journalismus gibt es zunehmend spezialisierte Teams, die sich
+ausschließlich mit Datenvisulisierung beschäftigen. Im Zentrum dieses
+Forschungsseminars steht deshalb die Arbeit mit dem kostenfreien
+Statistikprogramm ``R``. Alle Teilnehmer:innen werden lernen, wie sich
+Daten mit diesem Programm bearbeiten und auswerten lassen, um einfache
+Analysen und grafische Darstellungen erstellen zu können. Dabei gehen
+wir streng anwendungsorientiert vor, denn dieses Forschungsseminar wird
+keine Einführung in die Statistik ersetzen. Ziel ist es, verschiedene
+Varianten der Datenvisualisierung zu erlernen, die Sie im weiteren
+Studium nutzen können. Um teilnehmen zu können, sind keine Vorkenntnisse
+notwendig.
+
+\section{Aktive Mitarbeit}\label{aktive-mitarbeit}
+
+Um den Lernerfolg sicherzustellen, müssen Sie \emph{zweimal} eine
+Übungsaufgabe zu Hause bearbeiten und den Lösungsweg in Moodle
+hochladen.
+
+\section{Ablauf}\label{ablauf}
+
+\textbf{17. April: Einführung}
+
+\textbf{24. April: Grundlagen}
+
+Vorab lesen: Kapitel 1 aus
+\href{https://socviz.co/lookatdata.html\#lookatdata}{Data Visualization.
+A practical introduction}.
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\tightlist
+\item
+  R, RStudio und Quarto
+\item
+  Projekte anlegen \& mit Skripten arbeiten
+\item
+  Bibliotheken installieren und aufrufen
+\item
+  Erstes Beispiel: Ein simulierter Datensatz
+\item
+  Datensätze inspizieren
+\item
+  Die erste Grafik!
+\end{enumerate}
+
+\textbf{8. Mai: Balkendiagramme}
+
+Vorab lesen: Kapitel 6 aus
+\href{https://clauswilke.com/dataviz/visualizing-amounts.html}{Fundamentals
+of Data Visualization}.
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\tightlist
+\item
+  Excel-Daten laden: csv und xlsx
+\item
+  Balkendiagramm nach Parteizugehörigkeit
+\item
+  Den Parteien Farben zuordnen
+\item
+  Langes Datenformat
+\item
+  Balkendiagramme nach Partei und Geschlecht
+\end{enumerate}
+
+\textbf{15. Mai: Gestaltungsarten -- die ``Geome''}
+
+Beispiel: Abgeordnete im Bundestag
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\tightlist
+\item
+  Punktediagramm: Durchschnittliches Alter
+\item
+  Alle Datenpunkte zeigen: Jitter
+\item
+  Verteilungen anzeigen: Histogramm und Density plot
+\item
+  Alpha effektiv einsetzen
+\item
+  Das Erscheinungsbild ändern
+\end{enumerate}
+
+\textbf{22. Mai: Übungswoche}
+
+Bitte bearbeiten Sie bis zum \textcolor{Orange}{2. Juni (18:00 Uhr)} die
+in Moodle beschriebene Übungsaufgabe und laden Sie Ihr Skript als
+html-Dokument in den dafür vorgesehenen Ordner hoch. Nach Ablauf der
+Frist lade ich eine (einfache) \textcolor{Orange}{Musterlösung} hoch,
+die Woche danach lerrnen wir weitere Schritte, um das Skript weniger
+fehleranfällig zu machen.
+
+\textbf{5. Juni: Daten umformen und weitere Darstellungsarten}
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\tightlist
+\item
+  Variablen auswählen, filtern und umbenennen
+\item
+  Variablen verändern: mutate(), case\_when() und if\_else()
+\item
+  Missings
+\item
+  Mit Gruppen arbeiten
+\end{enumerate}
+
+\textbf{12. Juni: Funktionen I: Unnötige Wiederholungen vermeiden}
+
+Never type the same code twice.
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\tightlist
+\item
+  Funktionen erstellen
+\item
+  Funktionen auf mehrere Spalten anwenden
+\item
+  Eine ggplot-Funktion
+\item
+  Ein eigenes ``theme'' erstellen
+\end{enumerate}
+
+\textbf{26. Juni: Funktionen II: Grafiken automatisiert erstellen}
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\tightlist
+\item
+  Mehr zu \texttt{mutate(across())}
+\item
+  Eine Funktion für Grafiken
+\item
+  Grafiken kombinieren
+\item
+  Ein ``theme'' selbst erstellen
+\end{enumerate}
+
+\textbf{3. Juli: Trends im Zeitverlauf}
+
+Beispiel: Autokratisierung
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\tightlist
+\item
+  Trends in wenigen Ländern
+\item
+  Trends in vielen Ländern pro Jahrzehnt
+\item
+  Dumbbell plots
+\item
+  Faceting
+\item
+  Highlighting Beispiel: Wahlbeteiligung und Parteiergebnisse in den
+  Wahlkreisen
+\end{enumerate}
+
+\textbf{10. Juli: Lineare Regressionsmodelle und Interaktionen grafisch
+darstellen}
+
+Beispiel: Wo schneiden Parteien gut oder schlecht ab?
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\tightlist
+\item
+  Das unersetzliche Streudiagramm
+\item
+  Trendlinien hinzufügen
+\item
+  Koeffizienten als Abbildung
+\item
+  Interaktionen einfügen
+\item
+  Interaktionen darstellen
+\end{enumerate}
+
+\textbf{17. Juli: Logistische Regression und vorhergesagte
+Wahrscheinlichkeiten}
+
+Beispiel: Wer wählt die Grünen?
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\tightlist
+\item
+  Logistische Regressionen
+\item
+  Koeffizientenplots
+\item
+  Vorhergesagte Wahrscheinlichkeiten
+\item
+  Marginale Effekte
+\end{enumerate}
+	
+	
+	
+	
+			\end{document}
+
+\makeatletter
+\def\@maketitle{%
+	\newpage
+	%  \null
+	%  \vskip 2em%
+	%  \begin{center}%
+	\let \footnote \thanks
+	{\fontsize{12}{10}\selectfont\raggedright  \setlength{\parindent}{0pt} \@title \par}%
+}
+%\fi
+\makeatother

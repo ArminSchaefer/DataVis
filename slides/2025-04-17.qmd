@@ -31,7 +31,6 @@ library(democracyData)
 library(here)
 library(tidyverse)
 
-
 ```
 
 ## Was wir heute vorhaben

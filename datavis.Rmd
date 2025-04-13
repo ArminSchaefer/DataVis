@@ -1,0 +1,148 @@
+---
+output: 
+  pdf_document:
+    keep_tex: true
+    fig_caption: yes
+    latex_engine: pdflatex
+    template: ../../seminarplan.txt
+geometry: margin=1in
+
+title: "**Datenvisualisierung mit R**"
+author: "*Armin Schäfer*"
+date: "Wintersemester 2024/25"
+
+email: "schaefer@politik.uni-mainz.de"
+number: "Sem R"
+officehours: "Nach Vereinbarung"
+office: "GFG 04-436"
+classroom: "GFG 01-512"
+classhours: "8.00-10.00 Uhr"
+
+fontsize: 11pt
+header-includes:
+   - \linespread{1.05}
+---
+
+```{r setup, include=FALSE, cache=F, message=F, warning=F, results="hide"}
+knitr::opts_chunk$set(cache=TRUE)
+knitr::opts_chunk$set(fig.path='figs/')
+knitr::opts_chunk$set(cache.path='_cache/')
+knitr::opts_chunk$set(warning=F, message=F)
+# knitr::opts_knit$get(kable.force.latex = TRUE)
+```
+
+
+
+```{r include = FALSE}
+library(tidyverse)
+library(lubridate)
+
+firstday <- "2025-04-17"
+    
+meetings <- ymd(firstday) + c(0:20) * weeks(1)
+
+meeting_headers <- paste0(day(meetings), ". ",months(meetings))
+
+```
+
+# Beschreibung
+
+Inhalt: Der kompetente Umgang mit Daten und deren grafisch Darstellung werden immer wichtiger. Wissenschaftliche Ergebnisse werden immer häufiger grafisch dargestellt und nicht nur im Text beschrieben. Auch im Journalismus gibt es zunehmend spezialisierte Teams, die sich ausschließlich mit Datenvisulisierung beschäftigen. Im Zentrum dieses Forschungsseminars steht deshalb die Arbeit mit dem kostenfreien Statistikprogramm “R“. Alle Teilnehmer:innen werden lernen, wie sich Daten mit diesem Programm bearbeiten und auswerten lassen, um einfache Analysen und grafische Darstellungen erstellen zu können. Dabei gehen wir streng anwendungsorientiert vor, denn dieses Forschungsseminar wird keine Einführung in die Statistik ersetzen. Ziel ist es, verschiedene Varianten der Datenvisualisierung zu erlernen, die Sie im weiteren Studium nutzen können. Um teilnehmen zu können, sind keine Vorkenntnisse notwendig.
+
+# Aktive Mitarbeit
+
+Um den Lernerfolg sicherzustellen, müssen Sie *zweimal* eine Übungsaufgabe zu Hause bearbeiten und den Lösungsweg in Moodle hochladen.
+
+
+# Ablauf
+
+**`r meeting_headers[1]`: Einführung**
+
+**`r meeting_headers[2]`: Grundlagen**
+
+Vorab lesen: Kapitel 1 aus [Data Visualization. A practical introduction](https://socviz.co/lookatdata.html#lookatdata).
+
+a) R, RStudio und Quarto
+b) Projekte anlegen & mit Skripten arbeiten
+c) Bibliotheken installieren und aufrufen
+d) Erstes Beispiel: Ein simulierter Datensatz
+e) Datensätze inspizieren
+f) Die erste Grafik!
+
+**`r meeting_headers[4]`: Balkendiagramme**
+
+Vorab lesen: Kapitel 6 aus [Fundamentals of Data Visualization](https://clauswilke.com/dataviz/visualizing-amounts.html).
+
+a) Excel-Daten laden: csv und xlsx
+b) Balkendiagramm nach Parteizugehörigkeit
+c) Den Parteien Farben zuordnen
+d) Langes Datenformat
+e) Balkendiagramme nach Partei und Geschlecht
+
+**`r meeting_headers[5]`: Gestaltungsarten -- die "Geome"**
+
+Beispiel: Abgeordnete im Bundestag
+
+a) Punktediagramm: Durchschnittliches Alter
+b) Alle Datenpunkte zeigen: Jitter
+c) Verteilungen anzeigen: Histogramm und Density plot
+d) Alpha effektiv einsetzen
+e) Das Erscheinungsbild ändern
+
+**`r meeting_headers[6]`: Übungswoche**
+
+Bitte bearbeiten Sie bis zum \textcolor{Orange}{2. Juni (18:00 Uhr)} die in Moodle beschriebene Übungsaufgabe und laden Sie Ihr Skript als html-Dokument in den dafür vorgesehenen Ordner hoch. Nach Ablauf der Frist lade ich eine (einfache) \textcolor{Orange}{Musterlösung} hoch, die Woche danach lerrnen wir weitere Schritte, um das Skript weniger fehleranfällig zu machen.
+
+**`r meeting_headers[8]`: Daten umformen und weitere Darstellungsarten**
+
+a) Variablen auswählen, filtern und umbenennen
+b) Variablen verändern: mutate(), case_when() und if_else()
+c) Missings
+d) Mit Gruppen arbeiten
+
+**`r meeting_headers[9]`: Funktionen I: Unnötige Wiederholungen vermeiden**
+
+Never type the same code twice.
+
+a) Funktionen erstellen
+b) Funktionen auf mehrere Spalten anwenden
+c) Eine ggplot-Funktion 
+d) Ein eigenes "theme" erstellen
+
+**`r meeting_headers[11]`: Funktionen II: Grafiken automatisiert erstellen**
+
+a) Mehr zu `mutate(across())`
+b) Eine Funktion für Grafiken
+c) Grafiken kombinieren
+d) Ein "theme" selbst erstellen
+
+
+**`r meeting_headers[12]`: Trends im Zeitverlauf**
+
+Beispiel: Autokratisierung
+
+a) Trends in wenigen Ländern
+b) Trends in vielen Ländern pro Jahrzehnt
+c) Dumbbell plots
+d) Faceting
+e) Highlighting
+Beispiel: Wahlbeteiligung und Parteiergebnisse in den Wahlkreisen
+
+**`r meeting_headers[13]`: Lineare Regressionsmodelle und Interaktionen grafisch darstellen**
+
+Beispiel: Wo schneiden Parteien gut oder schlecht ab?
+
+a) Das unersetzliche Streudiagramm
+b) Trendlinien hinzufügen
+c) Koeffizienten als Abbildung
+d) Interaktionen einfügen
+e) Interaktionen darstellen
+
+**`r meeting_headers[14]`: Logistische Regression und vorhergesagte Wahrscheinlichkeiten**
+
+Beispiel: Wer wählt die Grünen?
+
+a) Logistische Regressionen
+b) Koeffizientenplots
+c) Vorhergesagte Wahrscheinlichkeiten
+d) Marginale Effekte
