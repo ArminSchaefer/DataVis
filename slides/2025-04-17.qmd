@@ -1,0 +1,304 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Einführung
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 04/17/2025
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+remotes::install_github("xmarquez/democracyData")
+
+library(lubridate)
+library(patchwork)
+library(democracyData)
+library(here)
+library(tidyverse)
+
+
+```
+
+## Was wir heute vorhaben
+
+1) Vorstellungsrunde
+2) The bad, the ugly and the wrong
+3) Erste Merkposten
+4) Ziele der Lehrveranstaltung und Ablauf
+5) Was Sie tun müssen
+6) R und RStudio laden
+
+## Hilfe! Meine Augen schmerzen
+
+```{r}
+#| label: abadplot
+#| echo: false
+#| fig-width: 9
+
+df <- USArrests
+
+df$state <- row.names(df)     
+
+df |> slice(1:20) |> 
+  ggplot(aes( x = state, y = Murder, fill = state))+
+  geom_col()+
+  theme_bw()+
+  theme(axis.title.y = element_text(size = 16, face = "italic"),
+        panel.grid = element_line(linewidth = 1.5))
+
+
+```
+
+## Stattdessen
+
+```{r}
+#| label: abetterplot
+#| echo: false
+#| fig-width: 7
+
+df |> slice(1:20) |> 
+ggplot(aes(x = fct_reorder(state, Murder), y = Murder))+
+  geom_point(size = 2.5)+
+  labs(x = NULL, y = "Murder arrests per 100,000 inhabitants")+
+  scale_y_continuous(breaks = c(0,3,6,9,12,15,18))+
+  coord_flip()+
+  theme_light()+
+  theme(axis.text = element_text(color = "black"))
+  
+```
+
+## Hässlich, potenziell schlecht
+
+```{r, out.width = "60%"}
+#| label: badexample
+#| echo: false
+#| fig-width: 7
+
+knitr::include_graphics(here("pics", "Huq-Ginsburg-graph.png"))
+
+```
+
+[Quelle: [Huq und Ginsburg](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2901776), S. 16.]{.links}
+
+## Stattdessen
+
+```{r}
+#| echo: false
+#| fig-width: 7
+#| fig-height: 5.5
+
+fh <- download_fh(verbose = FALSE)
+
+colors <- c("#E69F00", "#56B4E9", "#009E73")
+names(colors) <- unique(fh$status)
+
+fh |> group_by(year, status) |> 
+  filter(year > 1974) |> 
+  summarise(n = n()) |> 
+  mutate(freq = n/sum(n)) |> 
+  ggplot(aes(x = year, y = freq, color = status))+
+  geom_line(linewidth = 1)+
+  scale_color_manual(values = colors)+
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0,0.6))+
+  labs(title = "<span style = 'color:#E69F00'>**Freie**</span>, 
+       <span style = 'color:#56B4E9'>**teilweise freie**</span> und 
+       <span style = 'color:#009E73'>**unfreie Staaten**</span>",
+       subtitle = "Daten: Freedom House",
+       x = NULL, y = "% regimes",
+       color = NULL)+
+  theme_light()+
+  theme(axis.text = element_text(color = "grey40", size = 14),
+        axis.title.y = element_text(size = 16),
+        panel.grid.minor = element_blank(),
+        plot.title = ggtext::element_markdown(),
+        legend.position = "none")
+
+
+```
+
+## The wrong, the bad and the ugly
+
+* Hässlich -- eine Abbildung, die ästhetische Probleme aufweist, aber ansonsten klar und informativ ist.
+
+* Schlecht -- eine Abbildung, die Probleme mit der Darstellung hat; sie kann unklar, verwirrend, übermäßig kompliziert oder irreführend sein.
+
+* Falsch -- eine Abbildung, die objektiv falsch ist.
+
+[Quelle: [Willke 2019: 2](https://clauswilke.com/dataviz/introduction.html).]{.links} 
+ 
+## Beispiele für hässlich, schlecht und falsch
+
+```{r}
+#| label: willke1
+#| echo: false
+#| fig-width: 7
+
+knitr::include_graphics(here("pics", "baduglywrong.png"))
+
+```
+
+[Quelle: [Willke 2019: 3](https://clauswilke.com/dataviz/introduction.html).]{.links}
+
+## Erste Merkposten
+
+1. Eine Abbildung sollte die Kernaussage klar transportieren.
+2. Farben sollten nur eingesetzt werden, wenn sie eine inhaltliche Bedeutung haben.
+3. Hintergründe, Hilfslinien, Achsen und Legenden sollten nicht so gestaltet werden, dass sie die meiste Aufmerksamkeit auf sich ziehen.
+4. Generell gilt: *Less ink per inch*.
+5. Eine Abbildung, bei der die dargestellten Werte nicht nachvollziebar sind, ist immer schlecht und meistens sogar falsch.
+
+## Bitte vermeiden
+
+1. Tortendiagramme mit mehr als drei Tortenstücken^[Tortendiagramme am besten ganz vermeiden!]
+
+2. Gestapelte Balkendiagramme
+
+3. Dreidimensionale Abbildungen
+
+4. Senkrechte Balkendiagramme mit vielen Kategorien
+
+5. Spezialeffekte (explodierendes Tortendiagramm) 
+
+## Warum R?
+
+R ist eine kostenfrei nutzbare Programmiersprache, die auf allen gängigen Betriebssystemen läuft. In den Sozialwissenschaften ist R inzwischen extrem verbreitet. Lange Zeit waren gerade die Visualisierungsmöglichkeiten besser als die in Stata.
+
+Es gibt Anwendungen, bei denen andere Software überlegen ist, aber für die meisten Aufgaben, die im Studium anstehen, sollte R spielend ausreichen.
+
+Ein großer Vorteil von R ist, dass zahlreiche Hilfestellungen kostenlos im Web zu finden sind.
+
+## Was wir nicht machen
+
+::: {.callout-warning}
+* Dies ist kein Statistikseminar -- es geht um die Visualisierung von Daten!
+
+* Dies ist keine umfassende Einführung in die Nutzung von R, aber ein guter Start.
+
+* Wir decken nur einen kleinen Teil der Möglichkeiten ab, die R zur Datenauswertung und -visualisierung bietet.
+
+* Das ist kein Kurs zur Theorie der Datenvisualisierung.
+:::
+
+## Ablauf
+
+```{r}
+#| include: false
+
+firstday <- "2024-10-25"
+    
+meetings <- ymd(firstday) + c(0:20) * weeks(1)
+
+meeting_headers <- paste0(day(meetings), ". ",months(meetings))
+
+```
+
+*`r meeting_headers[3]`: Grundlagen*
+
+*`r meeting_headers[4]`: Gruppengrößen darstellen*
+
+*`r meeting_headers[6]`: Gestaltungsarten -- die "Geome"*
+
+*`r meeting_headers[7]`: Daten umformen und weitere Darstellungsarten*
+
+*`r meeting_headers[8]`: Funktionen I: Unnötige Wiederholungen vermeiden*
+
+*`r meeting_headers[9]`: Funktionen II: Grafiken automatisiert erstellen*
+
+## Ablauf
+
+*`r meeting_headers[12]`: Trends im Zeitverlauf*
+
+*`r meeting_headers[13]`: Landkarten*
+
+*`r meeting_headers[14]`: Lineare Regressionsmodelle und Interaktionen grafisch darstellen*
+
+*`r meeting_headers[15]`: Logistische Regression und vorhergesagte Wahrscheinlichkeiten*
+
+*`r meeting_headers[16]`: Rückblick, Fragen, Beratung*
+
+
+
+## Was Sie tun müssen
+
+1) Sie nehmen regelmäßig teil und wiederholen die Inhalte.
+
+2) An zwei Terminen müssen Sie eine Übungsaufgabe lösen und in Moodle hochladen.
+
+3) Sie schreiben eine Hausarbeit, in der Sie Datenvisualisierung verwenden.
+
+## R und RStudio über die Universität laden
+
+```{r}
+#| out-width: 80%
+
+knitr::include_graphics(here("pics", "apps_zdv.png"))
+
+```
+
+## Alternative: R auf den eigenen Rechner laden
+
+1) Laden Sie R von [posit.co](https://posit.co/download/rstudio-desktop/) herunter und installieren Sie es.
+
+2) Laden Sie nun ebenfalls RStudio herunter und installieren Sie es.
+
+## Die Startseite (ist anpassbar)
+
+Die Fenster der Startseite lassen sich verschieben (`Tools` $\rightarrow$ `Global Options` $\rightarrow$ `Pane Layout`) und die Farbgestaltung auswählen. Aber Sie sollten immer Zugriff auf die `Console` und das Fenster `Source` haben.
+
+```{r}
+#| out-width: 60%
+
+knitr::include_graphics(here("pics", "startseite.png"))
+
+```
+
+## Befehle in die Console eingeben
+
+Die Console können Sie nutzen, um Befehle direkt einzugeben. In Zukunft werden wir das selten tun, weil die dort eingegebenen Befehle mit dem Schließen des Programms verschwinden.  Wenn wir eine Variable definieren wollen oder eine Grafik zwischenspeichern wollen, verwenden wir einen nach links weisenden Pfeil `<-`. Die Tastaturkombination ist [alt + Bindestrich]{.tip}.
+
+```{r}
+#| echo: true
+
+x <- 3
+y <- 4
+
+x + x
+x * y
+
+```
+
+```{r}
+#| echo: true
+
+x <- "Guten Morgen"
+x
+
+```
+
+## Vektoren
+
+R ist eine [vektorbasierte Programmiersprache]{.alert}. Das heißt, R arbeitet mit Listen. Oben haben wir `x <- 2` definiert. Das ist eine Liste, die nur einen einzigen Wert enthält und die Länge "1" hat. Vektoren können aber sehr viel mehr Elemente beinhalten. Beispielsweise können wir x auch wie folgt definieren: `x <- c(2,4,6,8)`.^[Das kleine "c" vor der Klammer steht für "combine". Dem werden Sie öfters begegnen.] Probieren Sie dies nun in der Console aus und multiplizieren Sie anschließend den Vektor `x` mit 2. Was passiert?
+
+Erstellen Sie nun unter Verwendung von `x` und ohne die Zahlen einzutippen (!) einen neuen Vektor `y`, der die Werte 8, 16, 24 und 32 enthält.
+
+## Ausblick
+
+Kommende Woche fangen wir an, mit `Skripten` zu arbeiten. Das dient die Ziel, die Analysen reproduzierbar zu halten. Außerdem können Sie sich damit im Lauf des Semesters ein Dokument mit allen Lerninhalten erstellen.
+
+Außerdem werden wir die ersten Grafiken erstellen!
