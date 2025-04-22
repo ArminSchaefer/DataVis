@@ -1,0 +1,516 @@
+---
+title: Datenvisualisierung mit R
+subtitle: R Skripte und erste Grafiken
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 04/24/2025
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(rio, here, tidyverse)
+
+```
+
+
+## Was wir heute vorhaben
+
+1) Vorarbeiten
+2) R libraries
+3) Mit Skripten arbeiten
+4) Datensätze inspizieren
+5) Ein Balkendiagramm erstellen
+
+## Eine passende Ordnerstruktur anlegen
+
+An besten ist es, wenn Sie einen Ordner für dieses Seminar in [OneDrive]{.tip} anlegen. Sie können es aber auch lokal auf einem USB-Stick speichern. Ich schlage vor, Sie nennen den Ordner [datavis]{.alert}. Innerhalb dieses Ordners sollten sie folgende Unterordner anlegen:
+
+```{r}
+#| out-width: 30%
+
+knitr::include_graphics(here("pics", "ordner.png"))
+
+```
+
+## Ein Projekt anlegen
+
+Zu Beginn ist es sinnvoll, ein [Projekt]{.alert} anzulegen. Dieses Projekt sollte im Ordner "datavis" gespeichert werden, weil wir dann *relative Pfade* verwenden können. Dies macht es leichter, an verschiedenen Rechnern zu arbeiten oder mit anderen zusammenzuarbeiten.^[Der Vorteil relativer Pfade wird noch klar werden.]
+
+:::{.callout-tip}
+
+Gewöhnen Sie sich an, keine *absoluten Dateipfade* zu verwenden. Wenn Ihr Skript darauf aufbaut, bekommen Sie Probleme, wenn Sie den Arbeitsplatz wechseln. Plötzlich findet R die Datensätze nicht mehr, weil sich bspw. der Laufwerksbuchstabe geändert hat.
+
+:::
+
+## Ein Projekt anlegen
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| out-width: 110%
+
+knitr::include_graphics(here("pics", "newproject.png"))
+
+```
+
+:::
+
+::: {.column width="50%"}
+```{r}
+
+knitr::include_graphics(here("pics", "newprojectwindow.png"))
+
+```
+:::
+
+::::
+
+## Ein Projekt anlegen
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+
+knitr::include_graphics(here("pics", "existingdirectory.png"))
+
+```
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| out-width: 110%
+
+knitr::include_graphics(here("pics", "filewithproject.png"))
+
+```
+:::
+
+::::
+
+# R libraries (packages)
+
+## Bibliotheken
+
+In R sind viele Funktionen nicht vorinstalliert, sondern in bestimmten Bibliotheken (`packages`) enthalten. Diese Bibliotheken müssen zunächst (einmal) installiert und dann aufgerufen werden. Das wichtigste Paket, um loszulegen, nennt sich `tidyverse`. Der Befehl zum Installieren von Bibliotheken lautet `install.packages`. 
+
+```{r}
+#| echo: true
+#| include: true
+#| eval: false
+
+install.packages("tidyverse") # noch nicht eingeben!
+
+```
+
+Um das Paket nutzen zu können, müssen wir es nach jedem Neustart von R aktivieren. Das geschieht durch den Befehl `library()`.
+
+```{r}
+#| echo: true
+#| include: true
+#| eval: false
+
+library(tidyverse) # hier benötigen wir keine Anführungszeichen.
+
+```
+
+## Getting started
+
+Falls Sie mehrere Pakete in einem Schritt installieren wollen, geht das auch, indem sie erneut `c` nutzen.
+
+```{r}
+#| echo: true
+#| include: true
+#| eval: false
+
+install.packages(c("tidyverse", "here"))
+
+```
+
+Aktiviert werden die `packages` aber einzeln.
+
+```{r}
+#| echo: true
+#| include: true
+#| eval: false
+
+library(here)
+library(tidyverse)
+
+```
+
+## Dasselbe -- nur anders
+
+In R gibt es fast immer mehrere Wege, etwas zu tun. Das ist anfangs verwirrend, aber bald gewöhnen Sie sich daran. Ein Beispiel: Wir können die Bibliotheken, die wir installieren wollen, auch zunächst in einen Vektor packen und dann installieren.
+
+```{r}
+#| echo: true
+#| eval: false
+
+my_packages <- c("tidyverse", "here")
+install.packages(my_packages)
+
+```
+
+# Skripte
+
+## Skripte
+
+R und [Quarto](https://quarto.org/) bieten sehr gute Möglichkeiten, Text und Code zu kombinieren. Das hilft Ihnen, Dokumente zu erstellen, die auch in Zukunft nachvollziehbar sein werden.
+
+:::{.callout-important title="Wichtig!"}
+
+Wir werden immer mit Skripten arbeiten, damit Sie selbst und andere später nachvollziehen können, was Sie getan haben. Reproduzierbarkeit wird immer wichtiger in den Sozialwissenschaften. Gewöhnen Sie sich eine nachvollziehbare Arbeitsweise an und kommentieren Sie Ihren Code -- oder lassen Sie ihn durch ChatGPT oder Copilot annotieren!
+
+:::
+
+Zum Weiterlesen: [How to improve your relationship with your future self](https://www.scielo.cl/pdf/revcipol/v36n3/art11.pdf).
+
+## Skripte anlegen und wiederverwenden
+
+:::: {.columns}
+
+::: {.column width="60%"}
+```{r}
+#| out-width: 110%
+
+knitr::include_graphics(here("pics", "newquarto.png"))
+
+```
+
+:::
+
+::: {.column width="40%"}
+```{r}
+#| out-width: 110%
+
+knitr::include_graphics(here("pics", "newquarto2.png"))
+
+```
+:::
+
+::::
+
+## Quarto Startseite
+
+```{r}
+#| out-width: 85%
+
+knitr::include_graphics(here("pics", "newquarto3.png"))
+
+```
+
+## Quarto Startseite
+
+```{r}
+#| out-width: 70%
+
+knitr::include_graphics(here("pics", "newquarto4.png"))
+
+```
+
+Tragen Sie die Infos (oder ähnliche) ein und speichern Sie dann das Dokument in Ihrem vorhin erstellten Ordner "scripts".
+
+## Pakete in Skripten laden
+
+::: {.callout-tip title="Tipp"}
+
+Wenn wir immer wieder mit einem Skript arbeiten, möchten wir nicht, dass bereits installierte Bibliotheken bei jeder Aktualisierung neu installiert werden müssen. Das kann lange dauern, wenn viele notwendig sind.
+
+In Skripten empfehle ich deshalb, stattdessen `pacman` zu nutzen. Es installiert Bibliotheken, falls diese nicht vorhanden sind, und öffnet bereits vorhandene. Der Befehl dafür ist `p_load()`, aber wir müssen zunächst `pacman` installieren.
+
+:::
+
+## Pacman
+
+```{r}
+#| echo: true
+#| message: false
+#| eval: false
+
+# Überprüfen, ob das Paket "pacman" installiert ist
+if (!require("pacman")) {
+    # Wenn "pacman" nicht installiert ist, installiere es
+    install.packages("pacman")
+    # Lade das "pacman"-Paket in die aktuelle R-Sitzung
+    library(pacman)
+}
+
+# Verwende die Funktion p_load aus dem "pacman"-Paket, um mehrere Pakete zu laden
+p_load(here, tidyverse)
+
+
+```
+
+Zunächst wird durch `!require()` geprüft, ob `pacman` *nicht vorhanden* ist. Falls dies der Fall ist, wird es installiert, dann geöffnet.
+
+Nun steht der Befehl `p_load()` zur Verfügung. Der Code sieht kompliziert aus, macht uns aber das Leben leichter.
+
+## Vom Skript zum Dokument
+
+Nach Abspeichern des Dokuments können Sie nun oben auf den Button [Render]{.tip} drücken. Nun wird ein html-Dokument erstellt, das sowohl Text als auch Code und (später) Output enthält.
+
+## YAML -- die Präambel
+
+Der obere Teil des Skripts, der durch `---` umgeben ist, enthält Informationen zu Gestaltung des Dokuments. Hier lassen sich etliche Einstellung vornehmen, die dann angewendet werden.
+
+`toc: true` Soll ein table of contents erscheinen?
+
+`number-sections: true` Sollen die Unterabschnitte automatisch numeriert werden?
+
+Unteroptionen werden in einer neuen Zeile und eingerückt eingetragen. 
+
+## YAML ändern
+
+Probieren Sie nun aus, was die unten angezeigten Veränderungen in der YAML bewirken, wenn Sie das html-Dokument mit [Render]{.tip} erneut erstellen.
+
+```{r}
+#| out-width: 60%
+
+knitr::include_graphics(here("pics", "yaml2.png"))
+
+```
+
+## YAML ändern -- Exportierbarkeit
+
+```{r}
+#| out-width: 60%
+
+knitr::include_graphics(here("pics", "yaml3.png"))
+
+```
+
+Fügen Sie die unteren beiden Zeilen in die YAML ein und drücken Sie erneut [Render]{.tip}.
+
+
+## Text (nicht in Code-Blöcken)
+
+Außerhalb von Code-Blöcken können Sie Texte schreiben und [formatieren](https://quarto.org/docs/authoring/markdown-basics.html). Folgende Möglichkeiten gibt es:
+
+\# Erste Gliederungsebene, \## zweite Gliederungsebene usw.,
+
+\**kursiv*\* oder \*\***fett**\*\* hervorheben,
+
+\^^hochgestellt^\^ oder \~~tiefgestellt~\~ schreiben.
+
+Probieren Sie dies in Ihrem Skript aus und drücken Sie erneut [Render]{.tip}.
+
+## Text formatieren
+
+Sie können auch^[\^\[eine Fußnote einfügen\]] Webseiten wie etwa [Quarto](https://quarto.org/) verlinken \[Quarto\](https://quarto.org/),
+
+und <span style="color:red;">Text</span>(\<span style="color:red;">Text</span\>) farbig markieren (eher umständlich),
+
+* \*eine Liste mit Punkten und
+
+    + \+ Unterpunkten einfügen (vor das Pluszeichen gehören dann vier Leerzeichen).
+    
+Probieren Sie dies in Ihrem Skript aus und drücken Sie erneut [Render]{.tip}.
+
+## Code-Blöcke
+
+Code-Blöcke fügen Sie über die Tastenkombination `strg + alt + i` ein.^[Der erste Code-Block, direkt unterhalb der YAML, sollte die Befehle enthalten, mit denen Sie die Bibliotheken laden.] 
+
+1. Sie können den Code-Block ausführen, in dem Sie den kleinen Pfeil in der oberen rechten Ecke des Blocks drücken.
+
+2. Sie können das Dokument "rendern", dann wird der Code auch ausgeführt.
+
+3. Zusätzlich können Sie weiterhin in der Console arbeiten. Geben Sie dort nun bitte den Befehl `here()` ein. Sie müssten nun den Dateipfad zum Ordner [datavis]{.alert} angezeigt bekommen, in dem Sie vorhin das Projekt angelegt haben.
+
+## Code-Blöcke in einem Skript ausführen
+
+Wenn Sie nach rechts weisenden Pfeil am Button [Run]{.tip} drücken, können Sie einzelne oder alle Code-Blöcke aktivieren.
+
+```{r}
+#| out-width: 50%
+
+knitr::include_graphics(here("pics", "run.png"))
+
+```
+
+## Das Skript für diesen Kurs
+
+```{r}
+#| out-width: 75%
+
+knitr::include_graphics(here("pics", "startseite erweitert.png"))
+
+```
+
+
+# Daten
+
+## Daten erstellen
+
+In der Zukunft arbeiten wir mit realen Daten. Heute simulieren wir Daten, um damit erste Übungen durchführen zu können. Dazu erstellen wir einen einfachen Datensatz, genannt [tibble](https://tibble.tidyverse.org/). Wir generieren ein Parlament, das 300 Sitze hat und in dem fünf Parteien verteten sind. Wie viele Sitze eine Partei hat, wird zufällig bestimmt.^[Dies geschieht über den Befehl `sample`, der aber im Moment nicht so wichtig für uns ist.] 
+
+```{r}
+#| echo: true
+
+bt <- 
+  tibble(
+    "Sitze" = 1:300, 
+    "Partei" = sample(
+      x = c("Linke", "SPD", "Grüne", "FDP", "CDU"), 
+      size = 300, 
+      replace = TRUE
+    )
+  )
+
+```
+
+## Mit einem Datensatz arbeiten
+
+Tippen Sie nun `bt` in der Konsole ein und drücken Sie Enter. Sie bekommen einen Teil des Datensatzes angezeigt.
+
+Um den gesamten Datensatz zu sehen, verwenden wir `view()`. Dieser Befehl öffnet ein Fenster, in dem er zu sehen ist. Vergleichen Sie Ihre Zahlen mit denen der Nachbar:in. Warum unterscheiden sie sich?
+
+```{r}
+#| echo: true
+
+view(bt)
+
+```
+
+## Mit einem Datensatz arbeiten
+
+Da `view()` manchmal umständlich ist, können wir auch `head()` verwenden, dann werden nur die ersten Zeilen angezeigt.^[`view()` und `head()` sind Befehle, die Sie typischerweise nicht im Skript festhalten, sondern in die Konsole eingeben.]
+
+```{r}
+#| echo: true
+
+head(bt)
+
+```
+
+## Mit einem Datensatz arbeiten
+
+Eine andere Möglichkeit besteht darin, den Befehl `glimpse()` zu verwenden, der u.a. Informationen zur Anzahl der Zeilen und Spalten anzeigt.
+
+```{r}
+#| echo: true
+
+glimpse(bt)
+
+```
+
+## Mit einem Datensatz arbeiten
+
+Um auf eine spezifische Variable (= Vektor, = Spalte) zuzugreifen, müssen wir erst den Datensatz nennen und den Variablennamen mit Hilfe eines `$` verbinden. Zum Beispiel können wir uns die Ausprägungen von "Partei" mit dem Befehl `table()` in einer Tabelle ausgeben lassen.
+
+```{r}
+#| echo: true
+
+table(bt$Partei)
+
+```
+
+## Mit einem Datensatz arbeiten
+
+Um die Prozentwerte zu erhalten, verwenden wir den Befehl `prop.table()`.
+
+```{r}
+#| echo: true
+
+t <- table(bt$Partei) # wir speichern die Tabelle in einem Vektor t.
+prop.table(t) # diesen Vektor wandelt prop.table in Anteile um.
+
+```
+
+## Umwandeln
+
+Mit dem Befehl `round()` können wir bestimmen, wie viele Nachkommastellen angezeigt werden. In diesem Fall zwei.
+
+```{r}
+#| echo: true
+
+t2 <- prop.table(t)
+round(t2, 2)
+
+```
+
+Dies lässt sich auch in einem Schritt bewältigen, ist aber u.U. weniger übersichtlich.
+
+```{r}
+#| echo: true
+
+round(prop.table(t), 2)
+
+```
+
+## Übung
+
+Erstellen Sie nun einen Vektor mit dem Namen `p`, in dem die Anteile als `P`rozentwerte (zwischen 0 und 100) enthalten sind. Bitte geben Sie nur eine Nachkommastelle an.
+
+## Prozentwerte
+
+```{r}
+#| echo: true
+
+t2 <- prop.table(t)
+t2 <- round(t2, 3) # Vosicht! t2 wird überschrieben.
+p <- 100*t2
+
+head(p)
+
+```
+
+
+## Ausblick
+
+```{r}
+#| include: true
+#| echo: false
+#| out-width: 120%
+
+fraktionen <- import(here("data", "bt_fraktionen.xlsx"))
+
+fraktionen <- fraktionen %>% 
+  mutate(Partei = fct_relevel(Partei,
+                             "LINKE", "GRUENE", "SPD", "FDP", "CDU/CSU", "AfD"))
+
+parteifarbe <- cols <- c('#ff748c', '#1AA037', '#E3000F', '#FFEF00', '#000000', '#0489DB')
+
+
+ziel <- fraktionen %>% 
+  pivot_longer(-c("Partei", "id"), names_to = "Geschlecht", values_to = "Anzahl") %>% 
+  ggplot(aes(x = Partei, y = Anzahl, fill = Partei, alpha = Geschlecht))+
+  geom_col(position = "fill", color = "white", linewidth = 1)+
+  scale_alpha_manual(values=c(0.5,0.9))+
+  scale_fill_manual(values = parteifarbe)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(x = NULL, alpha = NULL,
+       title = "Anteil weiblicher und männlicher Abgeordneter")+
+  theme_minimal()+
+  guides(fill = "none") 
+
+ziel
+
+
+```
+
+## Session Info
+
+```{r}
+
+sessionInfo()
+
+```
