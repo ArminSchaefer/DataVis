@@ -1,0 +1,716 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Gruppengrößen darstellen
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 05/08/2025
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, rio, gt, tidyverse)
+
+fraktionen <- import(here("data", "bt_fraktionen.xlsx"))
+
+parteifarbe <- cols <- c('#0489DB', '#000000', '#ff748c',  '#FFEF00', '#1AA037', '#E3000F')
+
+bt <- 
+  tibble(
+    "Sitze" = 1:300, 
+    "Partei" = sample(
+      x = c("Linke", "SPD", "Grüne", "FDP", "CDU"), 
+      size = 300, 
+      replace = TRUE
+    )
+  )
+
+```
+
+## Unser Ziel (bis kommende Woche)
+
+```{r}
+#| include: true
+#| echo: false
+#| out-width: 120%
+
+ziel <- fraktionen %>% 
+  pivot_longer(-c("Partei", "id"), names_to = "Geschlecht", values_to = "Anzahl") %>% 
+  ggplot(aes(x = Partei, y = Anzahl, fill = Partei, alpha = Geschlecht))+
+  geom_col(position = "fill", color = "white", linewidth = 1)+
+  scale_alpha_manual(values=c(0.5,0.9))+
+  scale_fill_manual(values = parteifarbe)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(x = NULL, alpha = NULL,
+       title = "Anteil weiblicher und männlicher Abgeordneter")+
+  theme_minimal()+
+  guides(fill = "none") 
+
+ziel
+
+
+```
+
+## Getting started
+
+Öffnen Sie Ihr vergangene Woche erstelltes R-Skript, gehen Sie zum **untersten Code-Block** und drücken Sie in der rechten Ecke des Code-Blocks den nach unten weisenden Pfeil.
+
+```{r}
+#| echo: false
+#| out-width: 15%
+
+knitr::include_graphics(here("pics", "pfeil.png"))
+                        
+```
+
+Geben Sie `head(bt)` in der Konsole ein, um zu sehen, ob der Datensatz korrekt erstellt wurde.
+
+# Die ersten Grafiken
+
+## ggplot
+
+Es gibt auch andere Wege, Grafiken zu in R zu erstellen, wir werden aber den Befehl `ggplot()` verwenden, der Teil der `tidyverse()`-Bibliothek ist und nicht zusätzlich installiert oder aufgerufen werden muss.
+
+Der Name "ggplot" leitet aus [**g**rammar of **g**raphics **plot**]{.alert} ab. Diese "Grammatik" besteht darin, dass Grafiken einen immer gleichen, regelbasierten Aufbau haben. Mehr dazu finden Sie in Hadley Wickhams Buch [ggplot2: Elegant Graphics for Data Analysis (3e)](https://ggplot2-book.org/).
+
+## Von der Tabelle zur Grafik
+
+Um mit `ggplot()` ein Grafik zu erstellen, müssen Sie R mindestens folgende Informationen anbieten:
+
+1) Welchen Datensatz verwenden wir (`data = `),
+2) was stellen die Achsen dar (`aesthetics = `),
+3) welche geometrische Form soll für die Darstellung verwendet werden (`geom_`)?
+
+Später werden wir sehen, dass häufig weitere Informationen notwendig sind, um fortgeschrittene Grafiken zu erstellen. 
+
+## Die erste Grafik
+
+Wir erstellen nun ein Balkendiagramm, das die Anzahl der Sitze pro Partei darstellt. Grafiken bestehen aus mehreren Schichten, die mit dem `Pluszeichen` miteinander verbunden werden. Wir beginnen damit, den verwendeten Datensatz zu benennen.
+
+```{r}
+#| echo: true
+#| out-width: 60%
+
+ggplot(data = bt)
+
+```
+
+## Die erste Grafik
+
+:::: {.columns}
+
+::: {.column width="50%"}
+Dann sagen wir, was abgebildet werden soll...
+
+```{r}
+#| echo: true
+
+ggplot(data = bt, aes(x = Partei)) 
+
+```
+
+:::
+
+::: {.column width="50%"}
+
+... und welche Darstellungsart gewählt werden soll.
+```{r}
+#| echo: true
+
+ggplot(data = bt, aes(x = Partei))+
+  geom_bar()
+
+```
+
+:::
+
+::::
+
+## Was wird durch `geom_bar()` dargestellt?
+
+::: {.callout-important title="Wichtig!"}
+
+Das `geom_bar()` ist darauf ausgerichtet, die Gruppengröße in **absoluten Zahlen** darzustellen. Es zählt, wie viele Mitglieder eine Gruppe hat (= Anzahl der Zeilen pro Partei). Das heißt, die zugrunde liegende mathematische Methode ist `count`, wie Sie sehen, falls Sie in die Konsole `?geom_bar` eingeben. Oft wollen aber nicht absolute, sondern relative Zahlen, also Prozentwerte. Dazu kommen wir noch.
+
+:::
+
+## Die erste Grafik: Achsenbeschriftung
+
+```{r}
+#| echo: true
+#| out-width: 70%
+
+
+ggplot(data = bt, aes(x = Partei))+
+  geom_bar()+
+  labs(y = "Anzahl",
+       x = "Name der Partei")
+
+```
+
+## Die erste Grafik: Achsenbeschriftung
+
+```{r}
+#| echo: true
+#| out-width: 70%
+
+ggplot(data = bt, aes(x = Partei))+
+  geom_bar()+
+  labs(y = "Anzahl",
+       x = NULL)
+
+```
+
+## Die erste Grafik: Farben
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+
+ggplot(data = bt,
+       mapping = aes(x = Partei))+
+  geom_bar(fill = "darkred")+
+  labs(y = "Anzahl",
+       x = NULL)
+
+```
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+
+ggplot(data = bt,
+       mapping = aes(x = Partei))+
+  geom_bar(fill = "blue")+
+  labs(y = "Anzahl",
+       x = NULL)
+
+```
+
+:::
+
+::::
+
+## Fill oder color?
+
+Was passiert, wenn Sie in der Syntax `fill` durch `color` ersetzen?
+
+Was passiert, wenn Sie `geom_bar(fill = "white", color = "red")` eingeben?
+
+Was passiert, wenn Sie statt des Worts "blue" den HEX-Farbencode #E95D00 eingeben?
+
+## Echte Daten
+
+Bitte laden Sie die Datei [bt_fraktionen.xlsx]{.tip} aus dem Order "Datensätze" in Moodle herunter und speichern Sie diese in Ihrem Ordner "data", der sich im Ordner "datavis" befinden sollte.
+
+Wir nutzen das Package **[rio](https://www.rdocumentation.org/packages/rio/versions/1.2.3)**, um Daten mit dem Befehl `import()` einzulesen, weil es für fast alle Datenformate funktioniert. Fügen Sie das Package in den Code-Block ganz oben im Dokument ein (`bei p_load()`), führen Sie den Code-Block erneut aus und laden Sie dann die Daten unter dem Namen "fraktionen" in einem neuen Code-Block ganz unten im Dokument.
+
+```{r}
+#| echo: true
+#| warning: false
+#| execute: false
+
+p_load(here, rio, tidyverse) # oben ergänzen und den Code erneut ausführen.
+
+fraktionen <- import(here("data", "bt_fraktionen.xlsx")) # relative Pfade!!
+
+```
+
+## Den Datensatz kennenlernen
+
+Verwenden Sie nun die vergangene Woche eingeführten Befehle (`str()`, `glimpse()` und `view()`), um sich den Datensatz anzuschauen. Wie viele Spalten und Zeilen gibt es und welche Informationen enthalten diese?
+
+## Anteil weiblicher Abgeordneter errechnen
+
+Der Befehl, mit dem Sie den Mittelwert erhalten, lautet `mean()`. Errechnen Sie jeweils den Mittelwert der Spalten [m]{.tip} und [w]{.tip}.
+
+Die Summe ermitteln Sie über `sum()`.
+
+```{r}
+#| echo: true
+
+all <- sum(fraktionen$m) + sum(fraktionen$w)
+female <- sum(fraktionen$w)
+perc_female <- female/all*100
+
+round(perc_female,1)
+
+```
+
+## Anzahl weiblicher Abgeordneter darstellen
+
+Erstellen Sie nun ein Balkendiagramm, bei dem die Parteien auf der x-Achse und die **Anzahl** weiblicher Abgeordneter auf der y-Achse abgetragen sind. Oben im Dokument finden Sie eine Vorlage. 
+
+## Anzahl weiblicher Abgeordneter
+
+Warum klappt das nicht???
+
+```{r}
+#| include: true
+
+ggplot(data = fraktionen, aes(x = Partei))+
+  geom_bar()
+
+
+```
+
+## geom_bar() vs. geom_col()
+
+::: {.callout-important}
+
+Wenn Ihre Daten bereits zusammengefasst sind oder Werte für y (Höhe der Balken) enthalten, verwenden Sie `geom_col()`. Wenn Sie jedoch möchten, dass `ggplot()` die Anzahl der Zeilen pro Gruppe in Ihrem Datensatz zählt, verwenden Sie `geom_bar()`.
+
+:::
+
+Geben Sie bitte den Befehl `?geom_col` in die Konsole ein.
+
+Erstellen Sie nun die Grafik erneut und ersetzen Sie `geom_bar()` durch `geom_col()`. Welche Fehlermeldung erhalten Sie?
+
+## Anzahl weiblicher Abgeordneter
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+`geom_bar()` bezieht sich auf eine Spalte -- deshalb müssen wir nur `aes(x = ...)` eingeben.\linebreak
+
+Im Gegensatz dazu muss in `geom_col()` angegeben werden, welche Variable auf der x-Achse und welche auf der y-Achse dargestellt werden soll `aes(x = Partei, y = w)`:
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| include: true
+#| echo: true
+#| code-line-numbers: "1,2"
+
+ggplot(data = fraktionen, aes(x = Partei, 
+                              y = w))+
+  geom_col(fill = "darkgreen")+
+  labs(x = NULL, 
+       y = "Anzahl weibliche Abgeordneten")
+
+```
+
+:::
+
+::::
+
+## Aber wie stellen wir Frauen und Männer gleichzeitig dar?
+
+:::: {.columns}
+
+::: {.column width="70%"}
+
+In unserem Datensatz sind die Daten im **weiten Format** abgelegt. Das heißt, die Informationen zu weiblichen und mänlichen Abgeordneten befinden sich in **nebeneinander stehenden Spalten**. Mit `aes(x = Partei, y = w)` können wir **nicht** auf beide Spalten gleichzeitig zugreifen. Um auf die Anzahl weiblicher und männlicher Abgeordneter in `ggplot()` zugreifen zu können, müssen diese Informationen in einer Spalte vorhanden sein.
+
+:::
+
+::: {.column width="30%"}
+
+
+```{r}
+#| echo: false
+#| include: true
+
+fraktionen %>% 
+  gt() %>% 
+  tab_header(
+    title = md("Der Datensatz *Fraktionen*"),
+    subtitle = md("im weiten Format")
+  )
+
+```
+
+:::
+
+::::
+
+## Wide and long format
+
+Um unseren Datensatz in das lange Format zu bringen, müssen wir den Befehl `pivot_longer()` verwenden. Hierzu legen wir fest, welche Spalte wir beibehalten und welche Spalten nicht nebeneinander, sondern untereinander auftauchen sollen.
+
+```{r}
+#| echo: true
+
+fraktionen_long <- fraktionen %>% # wir speichern das Ergebnis unter neuem Namen
+  pivot_longer(-c("Partei", "id"), names_to = "Geschlecht", values_to = "Anzahl")
+
+```
+
+Beachten Sie das Minuszeichen vor dem `-c`, weil die Spalte beibehalten und -- in diesem Fall -- verdoppelt werden soll.
+
+```{r}
+#| echo: true
+
+view(fraktionen_long) # eher in der Konsole eingeben
+
+```
+
+## Wie hat sich der Datensatz verändert?
+
+```{r}
+#| echo: false
+#| message: false
+
+fraktionen_long %>%  
+  gt() %>% 
+  tab_header(
+    title = md("Der Datensatz *Fraktionen*"),
+    subtitle = md("im langen Format"))
+
+```
+
+## Die "Pipe" %>%
+
+Unter der Hand habe ich ein wichtiges Zeichen eingeführt, ohne es zu erläutern. In `R` können wir Befehle **miteinander verketten**, indem wir das Symbol [%>%]{.alert} verwenden. Die so genannte "Pipe" erlaubt es, viele Arbeitsschritte nacheinander auszuführen, ohne die Zwischenschritte abzuspeichern.
+
+Sie fügen [%>%]{.alert} über die Tastenkombination `strg + shift + m` ein.
+
+::: {.callout-tip title="Tipp"}
+
+Nach ` %>% ` sollte immer ein Zeilenumbruch erfolgen, sodass der nächste Befehl zu Beginn der neuen Zeile steht -- das macht den Code leichter lesbar.
+
+:::
+
+## Ein Beispiel
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+#| eval: false
+
+# Datensatz auswählen
+fraktionen %>% 
+  
+  # neue Spalte ergänzen
+  mutate(alle = m + w) %>% 
+  
+  # Grafik erstellen 
+  # Vorsicht: ("data = fraktionen" fällt weg!)
+  ggplot(aes(x = Partei, y = alle))+
+  geom_col()+
+  labs(x = NULL, y = "Anzahl")
+
+```
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: false
+
+# Datensatz auswählen
+fraktionen %>% 
+# neue Spalte ergänzen
+  mutate(alle = m + w) %>% 
+# Grafik erstellen
+  ggplot(aes(x = Partei, y = alle))+
+  geom_col()+
+  labs(x = NULL, y = "Anzahl")
+
+```
+
+
+
+:::
+::::
+
+## Neue Spalten/Variablen mit `mutate()` einfügen
+
+Wie gerade gesehen haben, können wir mit `mutate()` neue Spalten im Datensatz erzeugen. Zunächst legen wir den Namen der neuen Spalte fest und geben dann an, was sie enthalten soll.
+
+Verwenden Sie nun ` %>% ` und `mutate()`, um den **Anteil weiblicher Abgeordneter** in jeder Partei zu errechnen. Erstellen Sie ein Balkendiagramm, das die **Prozentwerte** auf der y-Achse abbildet.
+
+## Balkendiagramm mit Prozentwerten
+
+```{r}
+#| echo: true
+#| out-width: 60%
+
+fraktionen %>% 
+  mutate(alle = m + w, anteil_w = w/alle*100) %>% # Prozentwerte erstellen
+  ggplot(aes(x = Partei, y = anteil_w))+ 
+  geom_col()+
+  labs(x = NULL, y = "Anteil")
+
+```
+
+## Geordnetes Balkendiagramm mit Prozentwerten
+
+```{r}
+#| echo: true
+#| code-line-numbers: "3"
+#| out-width: 60%
+
+fraktionen %>% # wählt Datensatz aus
+  mutate(alle = m + w, anteil_w = w/alle*100) %>% # generiert neue Variablen
+  ggplot(aes(x = fct_reorder(Partei, anteil_w), # ordnet die Variable "Partei"
+             y = anteil_w)) +
+  geom_col()
+
+
+```
+
+## Alternative Vorgehensweise
+
+```{r}
+#| echo: true
+#| code-line-numbers: "3"
+#| out-width: 60%
+
+fraktionen %>% # wählt Datensatz aus
+  mutate(alle = m + w, anteil_w = w/alle*100) %>% # generiert neue Variablen
+  mutate(Partei = fct_reorder(Partei, anteil_w)) %>% # ordnet den Datensatz
+  ggplot(aes(x = Partei, y = anteil_w)) + # erstellt die Grafik
+  geom_col() # legt die Darstellungsart fest
+
+```
+
+
+## Alternative Vorgehensweise
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+wie eben:
+```{r}
+#| echo: true
+#| eval: false
+
+fraktionen %>% 
+  mutate(alle = m + w, anteil_w = w/alle*100) %>% 
+  mutate(Partei = fct_reorder(Partei, anteil_w)) %>% 
+  ggplot(aes(x = Partei, y = anteil_w)) + 
+  geom_col()
+
+```
+
+:::
+
+::: {.column width="50%"}
+
+neu:
+
+```{r}
+#| echo: true
+#| eval: false
+
+fraktionen %>% 
+  mutate(
+    alle = m + w, anteil_w = w/alle*100,
+    Partei = fct_reorder(Partei, anteil_w)) %>% # mehrere Umwandlungen innerhalb von mutate()
+  ggplot(aes(x = Partei, y = anteil_w)) + 
+  geom_col() 
+
+```
+
+:::
+
+:::: 
+
+## Balken unterteilen
+
+Wir verwenden nun wieder den vorhin erstellten Datensatz [fraktionen_long]{.tip}. Wie schaffen wir es, nicht nur die Gesamtzahl der Abgeordneten pro Partei darzustellen, sondern auch noch weibliche und männliche Abgeordnete farblich voneinander abzusetzen?
+
+```{r}
+#| echo: false
+#| out-width: 60%
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, fill = Geschlecht))+
+  geom_col()
+
+```
+
+## Die Farbe über eine Variable bestimmen
+
+```{r}
+#| echo: true
+#| code-line-numbers: "2"
+#| out-width: 60%
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, fill = Geschlecht))+ 
+  geom_col()
+
+```
+
+Wie unterscheidet sich der Code von der Farbverwendung weiter oben?
+
+## Die Farbe über eine Variable bestimmen
+
+```{r}
+#| echo: true
+#| code-line-numbers: "4"
+#| out-width: 60%
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, 
+           fill = Geschlecht))+ # Farbe ist Teil von aes(...)
+  geom_col(fill = "blue") # überschreibt den Befehl aus der Zeile zuvor
+
+```
+
+## Balken übereinander oder nebeneinander?
+
+Um dies festzulegen -- voreingestellt ist das gestapelte Balkendiagramm -- müssen wir in der Zeile `geom_col()` Informationen zur Position einfügen. Recherchieren Sie online, wie das gehen könnte.
+
+Welche anderen Darstellungsarten können über die Position noch bestimmt werden?
+
+## Balken nebeneinander
+
+```{r}
+#| echo: true
+#| code-line-numbers: "3"
+#| out-width: 60%
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, fill = Geschlecht))+
+  geom_col(position = "dodge")
+
+```
+
+## Anteile automatisch darstellen
+
+```{r}
+#| echo: true
+#| code-line-numbers: "3"
+#| out-width: 60%
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, fill = Geschlecht))+
+  geom_col(position = "fill")
+
+```
+
+## Scales -- um die Farben zu ändern
+
+"Scales in ggplot2 control the *mapping from data to aesthetics*. They take your data and turn it into something that you can see, like size, colour, position or shape. They also provide the tools that let you interpret the plot: the axes and legends. You can generate plots with ggplot2 without knowing how scales work, but understanding scales and learning how to manipulate them will give you much more control."
+
+[Hadley Wickham in [ggplot2-book.org](ggplot2-book.org/scales)]{.links}
+
+## Scales -- um die Farben zu ändern
+
+Diese Skalen sind eine weitere Schicht, die einem `ggplot()` hinzugefügt werden können. Die Befehle fangen immer mit `scale_` an, denn kommt, worauf sich die Skala bezieht, und dann, wie sie geändert werden soll. Beispiele:
+
+`scale_color_manual(values = c("red", "blue")`
+
+`scale_fill_manual(values = c("red", "blue"))`
+
+`scale_alpha_manual(values = c(0.8, 0.2))`
+
+Fügen Sie die zweite Zeile dem Code hinzu.
+
+## Scales verwenden
+
+```{r}
+#| echo: true
+#| code-line-numbers: "2,4"
+#| out-width: 60%
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, fill = Geschlecht))+ # legt die Variable fest
+  geom_col(position = "fill")+
+  scale_fill_manual(values = c("red", "blue"))+ # bestimmt die Farben
+  labs(x = NULL, y = "Anteil")
+
+```
+
+## Scales verwenden -- was hat sich verändert?
+
+```{r}
+#| echo: true
+#| out-width: 60%
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, color = Geschlecht))+
+  geom_col(fill = "white", position = "fill")+
+  scale_color_manual(values = c("red", "blue"))+
+  labs(x = NULL, y = "Anteil")
+
+```
+
+## Scales verwenden
+
+```{r}
+#| echo: true
+#| code-line-numbers: "2,4"
+#| out-width: 60%
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, alpha = Geschlecht))+
+  geom_col(position = "fill", fill = "blue")+
+  scale_alpha_manual(values = c(0.4, 0.8))+ # der Transparenzgrad liegt zw. 0 und 1.
+  labs(x = NULL, y = "Anteil")
+
+```
+
+## Übungsaufgabe (für zu Hause)
+
+Erstellen Sie möglichst exakt die auf der folgenden Seite stehende Abbildung, aber verwenden Sie den Datensatz **[fraktionen]{.tip}**. Verwenden Sie die `%>%`, erstellen Sie neue Variablen, wählen Sie die benötigten Spalten mit (`select`) aus, bringen Sie den Datensatz ins lange Format und erstellen Sie dann die Grafik.
+
+Vorsicht: Um die Grafik exakt reproduzieren zu können, müssen Sie Tricks recherchieren, die wir noch nicht besprochen haben! Alle Hilfsmittel sind erlaubt.^[Für die Farben können Sie [hier](https://waldyrious.net/viridis-palette-generator/) nachschauen.]
+
+## Übungsaufgabe (für zu Hause)
+
+```{r}
+#| label: longpipe
+#| echo: false
+#| eval: true
+
+fraktionen %>% 
+  mutate(alle = m + w,
+         weiblich = w/alle,
+         männlich = m/alle) %>% 
+  select(Partei, weiblich, männlich) %>% 
+  mutate(Partei = fct_reorder(Partei, weiblich)) %>%
+  pivot_longer(-c(Partei), 
+              names_to = "geschlecht", 
+              values_to = "anteil") %>% 
+  ggplot(aes(x = Partei, y = anteil, fill = geschlecht))+
+  geom_col()+
+  scale_y_continuous(labels = scales::percent)+
+  scale_fill_manual(values = c("#440154", "#35b779"))+
+  labs(x = NULL,
+       y = NULL,
+       fill = NULL,
+       title = "Anteil weiblicher Abgeordneter")
+
+```
+
+## Session Info
+
+```{r}
+
+sessionInfo()
+
+```
+

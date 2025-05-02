@@ -483,12 +483,7 @@ head(p)
 
 fraktionen <- import(here("data", "bt_fraktionen.xlsx"))
 
-fraktionen <- fraktionen %>% 
-  mutate(Partei = fct_relevel(Partei,
-                             "LINKE", "GRUENE", "SPD", "FDP", "CDU/CSU", "AfD"))
-
-parteifarbe <- cols <- c('#ff748c', '#1AA037', '#E3000F', '#FFEF00', '#000000', '#0489DB')
-
+parteifarbe <- cols <- c('#0489DB', '#000000', '#ff748c',  '#FFEF00', '#1AA037', '#E3000F')
 
 ziel <- fraktionen %>% 
   pivot_longer(-c("Partei", "id"), names_to = "Geschlecht", values_to = "Anzahl") %>% 
