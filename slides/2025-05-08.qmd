@@ -1,6 +1,6 @@
 ---
 title: Datenvisualisierung mit R
-subtitle: Gruppengrößen darstellen
+subtitle: Balkendiagramme -- von einfach bis anspruchsvoll
 format: clean-revealjs
 highlight-style: tango
 auto-stretch: false
