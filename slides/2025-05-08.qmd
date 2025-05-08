@@ -692,7 +692,7 @@ fraktionen %>%
          männlich = m/alle) %>% 
   select(Partei, weiblich, männlich) %>% 
   mutate(Partei = fct_reorder(Partei, weiblich)) %>%
-  pivot_longer(-c(Partei), 
+  pivot_longer(-c("Partei"), 
               names_to = "geschlecht", 
               values_to = "anteil") %>% 
   ggplot(aes(x = Partei, y = anteil, fill = geschlecht))+
