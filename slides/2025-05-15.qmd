@@ -1,0 +1,528 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Gestaltungsarten -- die “Geome”
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 05/15/2025
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, rio, flipbookr, ggbeeswarm, tidyverse)
+
+fraktionen <- import(here("data", "bt_fraktionen.xlsx"))
+
+fraktionen_long <- fraktionen %>%
+  pivot_longer(-c("Partei", "id"), names_to = "Geschlecht", values_to = "Anzahl")
+
+```
+
+## Wo wir waren
+
+```{r}
+#| echo: true
+#| out-width: 60%
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, fill = Geschlecht))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = c("red", "blue"))+
+  labs(x = NULL, y = "Anteil")
+
+```
+
+Wie sind die Balken angeordnet?
+
+## Reihenfolge der Balken manuell bestimmen -- `fct_relevel()`
+
+Variablen, die nicht Zahlen, sondern Wörter enthalten, sind [Faktoren]{.tip}. Standardmäßig werden diese Faktoren **alphabetisch sortiert**. Deshalb sind die Balken in der Grafik bislang ebenfalls alphabetisch angeordnet.
+
+Um dies zu ändern, verändern wir mithilfe von `mutate()` und `fct_relevel()` aus der Bibliothek `forcats` die Reihenfolge der Parteien im Datensatz.^[`forcats` muss nicht extra installiert werden, weil es Teil der `tidyverse`-Bibliothek ist.]
+
+```{r}
+#| echo: true
+
+fraktionen_long <- fraktionen_long %>%  # in diesem Fall überschreiben wir den Datensatz
+  mutate(Partei = fct_relevel(Partei,
+                             "DIE LINKE", "GRUENE", "SPD", 
+                             "FDP", "CDU/CSU", "AfD"))
+
+```
+
+## Neu sortiert!
+
+```{r}
+#| echo: true
+#| out-width: 80%
+
+ggplot(data = fraktionen_long,
+       aes(x = Partei, y = Anzahl, fill = Geschlecht))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = c("red", "blue"))+
+  labs(x = NULL, y = "Anteil")
+
+```
+
+## `fct_relevel()` vs `fct_reorder()`
+
+Mit `fct_relevel()` können wir jede beliebige Reihenfolge festlegen. Im Beispiel habe ich mich an der Sitzordnung im Bundestag orientiert. Häufig möchten wir aber eine **inhaltliche Aussage** treffen und die Balken mithilfe von Werten aus einer anderen Variable sortieren -- beispielsweise anhand des Frauenanteils in den Fraktionen. Hierfür verwenden wir `fct_reorder()` ebenfalls aus der `forcats`-Bibliothek.
+
+## Reihenfolge der Balken ändern -- `fct_reorder()`
+
+```{r}
+#| echo: true
+#| out-width: 60%
+#| code-line-numbers: "4"
+
+fraktionen %>%
+  mutate(percfem = w/(m + w)) %>% 
+  pivot_longer(-c("Partei", "percfem", "id"), names_to = "Geschlecht", values_to = "Anzahl") %>% 
+ggplot(aes(x = fct_reorder(Partei, -percfem), y = Anzahl, fill = Geschlecht))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = c("red", "blue"))+
+  labs(x = NULL, y = "Anteil")
+
+```
+
+## Farben der Parteien hinzufügen
+
+Um die Farben der Parteien festzulegen, kopieren wir Farbcodes von dieser [Github-Seite](https://gist.github.com/Pepo/1bf1b2d47a728e6c69d8b611a4063075) und fügen sie in einen neuen Vektor sein. Verwenden Sie diesen Vektor nun, um die Farben im Diagramm zu ändern. Wie gehen Sie vor?
+
+```{r}
+#| echo: true
+
+parteifarbe <- c('#ff748c', '#1AA037', '#E3000F', 
+                 '#FFEF00', '#000000', '#0489DB')
+
+```
+
+::: {.callout-important}
+
+Die Reihenfolge der Farben muss den Levels der Variable [Partei]{.tip} im Datensatz [fraktionen_long]{.tip} entsprechen!
+
+:::
+
+## Parteifarben
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+
+```{r}
+#| echo: true
+#| eval: false
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, 
+           y = Anzahl, 
+           fill = Partei))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = parteifarbe)+
+  labs(x = NULL, 
+       y = "Anteil")
+
+```
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: false
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, fill = Partei))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = parteifarbe)+
+  labs(x = NULL, y = "Anteil")
+
+```
+
+:::
+
+::::
+
+Verwenden Sie nun `scale_alpha_manual()`, um unterschiedliche Transparenzgrade für Frauen und Männer zu verwenden.
+
+## Parteifarben und Transparenz
+
+```{r}
+#| echo: true
+#| out-width: 60%
+#| code-line-numbers: "3,5,6"
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, y = Anzahl, 
+           fill = Partei, alpha = Geschlecht))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = parteifarbe)+
+  scale_alpha_manual(values = c(0.5, 0.9))+
+  labs(x = NULL, y = "Anteil")
+
+```
+
+## Fast geschafft!
+
+Um die Farben besser sichtbar zu machen, ändern wir das Erscheinungsbild der Grafik. Das geschieht über `theme`. Unter anderem folgende Designs sind verfügbar:
+
+`theme_bw()`
+
+`theme_classic()`
+
+`theme_minimal()`
+
+`theme_dark()`
+
+## Minimalistisches Erscheinungsbild
+
+```{r}
+#| echo: true
+#| out-width: 60%
+#| code-line-numbers: "7"
+
+ggplot(data = fraktionen_long, aes(x = Partei, y = Anzahl, 
+                                   fill = Partei, alpha = Geschlecht))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = parteifarbe)+
+  scale_alpha_manual(values = c(0.5, 0.9))+
+  labs(x = NULL, y = "Anteil")+
+  theme_minimal()
+
+```
+
+## Letzter Schritt
+
+Wir entfernen mit dem Befehl `guides()` die überflüssige Legende, in der die Parteinamen auftauchen.^[Was passiert, wenn Sie in der letzten Zeile "fill" durch "alpha" ersetzen?]
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+#| eval: false
+#| code-line-numbers: "11"
+
+ggplot(data = fraktionen_long, 
+       aes(x = Partei, 
+           y = Anzahl,
+           fill = Partei, 
+           alpha = Geschlecht))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = parteifarbe)+
+  scale_alpha_manual(values = c(0.5, 0.9))+
+  labs(x = NULL, y = "Anteil")+
+  theme_minimal()+
+  guides(fill = FALSE)
+
+```
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: false
+#| include: true
+
+ggplot(data = fraktionen_long, aes(x = Partei, y = Anzahl, 
+                                   fill = Partei, alpha = Geschlecht))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = parteifarbe)+
+  scale_alpha_manual(values = c(0.5, 0.9))+
+  labs(x = NULL, y = "Anteil")+
+  theme_minimal()+
+  guides(fill = FALSE)
+
+```
+
+:::
+
+::::
+
+# Weitere Darstellungsarten
+
+## Grammar of Graphics
+
+```{r}
+#| out-width: 60%
+#| fig-align: "center"
+
+knitr::include_graphics(here("pics", "gglayers.png"))
+
+```
+
+## Weitere "Geome"
+
+Wir werden verschiedene Möglichkeiten kennenlernen, *Verteilungen* darzustellen. Statt nur den Mittelwert abzubilden, wollen wir alle Werte einer Variable erfassen. Dazu schauen wir uns folgende Darstellungsarten an:
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+`geom_histogram()`
+
+`geom_density()`
+
+`geom_point()`
+
+:::
+
+::: {.column width="50%"}
+
+
+`geom_jitter()`
+
+`geom_boxplot()`
+
+`geom_violin()`
+
+:::
+::::
+
+## Excel-Daten einlesen
+
+Bitte laden Sie die Datei [bundestag.xlsx]{.tip} aus dem Order "Datensätze" in Moodle herunter und speichern Sie diese in dem Ordner "data". Laden Sie ihn mit dem Befehl `import()`:
+
+```{r}
+#| echo: true
+#| warning: false
+#| messaage: false
+
+bundestag <- import(here("data", "bundestag.xlsx"))
+
+
+```
+
+## Welche Informationen enthält der Datensatz?
+
+```{r}
+#| echo: false
+
+str(bundestag)
+
+```
+
+## Altersverteilung: Histogramm
+
+```{r}
+#| echo: true
+#| out-width: 60%
+
+ggplot(data = bundestag, aes(x = alter))+
+  geom_histogram()
+
+```
+
+Verändern Sie nun die Code, um Frauen und Männer getrennt voneinander darzustellen.
+
+## Altersverteilung: Histogramm
+
+```{r}
+#| echo: true
+#| out-width: 60%
+
+ggplot(data = bundestag, aes(x = alter, fill = geschlecht))+
+  geom_histogram()
+
+```
+
+Färben Sie zusätzlich die Außenlinien der Balken weiß ein.
+
+## Altersverteilung: Histogramm
+
+```{r}
+#| echo: true
+#| out-width: 60%
+
+ggplot(data = bundestag, aes(x = alter, fill = geschlecht))+
+  geom_histogram(color = "white") 
+
+```
+
+Vielleicht lieber unterschiedliche Farben für die Außenlinien nach Geschlecht verwenden und die Balken selbst weiß einfärben? Als Linienfarbe wählen wir rot und blau.
+
+## Altersverteilung: Histogramm
+
+```{r}
+#| echo: true
+#| out-width: 70%
+
+ggplot(data = bundestag, aes(x = alter, color = geschlecht))+
+  geom_histogram(fill = "white") +
+  scale_color_manual(values = c("red", "blue"))
+
+```
+
+## Histogramm: Balkenbreite
+
+```{r}
+#| echo: true
+#| out-width: 70%
+#| code-line-numbers: "2"
+
+ggplot(data = bundestag, aes(x = alter, color = geschlecht))+
+  geom_histogram(fill = "white", binwidth = 0.5) +
+  scale_color_manual(values = c("red", "blue"))+
+  theme_classic()
+
+```
+
+## Facets
+
+Häufig ist es sinnvoll, nicht alle Gruppen in einer Abbildung darzustellen, sondern **eine Abbildung pro Gruppe** zu bilden. Dies geschieht über eine weitere Schicht, die wir dem Code hinzufügen. 
+
+Die Zeile `facet_wrap(~ partei)` erzeugt ein Diagramm pro Partei. Nutzen Sie diese Zeile, um die Alterszusammensetzung der Abgeordneten getrennt für die Parteien darzustellen. Auf die Unterscheidung zwischen Frauen und Männern verzichten wir.
+
+## Facets
+
+```{r}
+#| echo: true
+#| code-line-numbers: "4"
+#| out-width: 70%
+
+ggplot(data = bundestag, aes(x = alter))+
+  geom_histogram()+
+  labs(x = NULL)+
+  facet_wrap(~ partei)
+
+```
+
+## Density
+
+Lesen Sie sich zunächst die Beschreibung unter `?geom_density` durch. Was wird dargestellt?
+
+```{r}
+#| echo: true
+#| out-width: 50%
+
+ggplot(data = bundestag, aes(x = alter, color = geschlecht))+
+geom_density()
+
+```
+
+Experimentieren Sie nun mit `fill` und `alpha`.
+
+## Density
+
+```{r}
+#| echo: true
+#| out-width: 70%
+
+ggplot(data = bundestag, aes(x = alter, fill = geschlecht, color = geschlecht))+
+  geom_density(alpha = 0.4)
+
+```
+
+## Einschub: Die Beschriftung der x-Achse ändern
+
+```{r}
+#| echo: true
+#| out-width: 70%
+#| code-line-numbers: "3"
+
+ggplot(data = bundestag, aes(x = alter, fill = geschlecht, color = geschlecht))+
+  geom_density(alpha = 0.4)+
+  scale_x_continuous(limits = c(20,80), breaks = c(20,30,40,50,60,70,80))
+
+```
+
+## Die Beschriftung der x-Achse ändern: Alternative
+
+```{r}
+#| echo: true
+#| out-width: 70%
+#| code-line-numbers: "3"
+
+ggplot(data = bundestag, aes(x = alter, fill = geschlecht, color = geschlecht))+
+  geom_density(alpha = 0.4)+
+  scale_x_continuous(limits = c(20,80), breaks = seq(20, 80, by = 10))
+
+```
+
+## Mehrere Gruppen 
+
+```{r}
+#| echo: true
+#| out-width: 70%
+
+ggplot(data = bundestag, aes(x = alter, fill = partei))+
+geom_density(alpha = 0.2)
+
+```
+
+Schön bunt, aber schwierig zu lesen...
+
+## Verteilung in Gruppen
+
+Warum ist das keine nützliche Darstellungsart?
+
+```{r}
+#| echo: true
+#| out-width: 70%
+
+ggplot(data = bundestag, aes(x = partei, y = alter))+
+  geom_point()+
+  labs(x = NULL)
+
+```
+
+## Verteilung in Gruppen -- `geom_point()`
+
+```{r}
+#| echo: true
+#| out-width: 50%
+
+ggplot(data = bundestag, aes(x = partei, y = alter))+
+  geom_point(alpha = 0.2)+
+  labs(x = NULL)+
+  theme_minimal()
+
+```
+
+Viele Punkte überlagern sich. Das ist nicht ideal. Ersetzen Sie `geom_point()` durch `geom_jitter()`.
+
+## Verteilung in Gruppen -- `geom_jitter()`
+
+```{r}
+#| echo: true
+#| out-width: 60%
+#| code-line-numbers: "2"
+
+ggplot(data = bundestag, aes(x = partei, y = alter, color = partei))+
+  geom_jitter(alpha = 0.5, width = 0.1)+ # 'width' bestimmt, wie sehr die Punkte streuen.
+  labs(x = NULL)+
+  theme_minimal()+
+  guides(color = FALSE)
+
+```
+
+Wir kommen darauf zurück.
+
+##
+
+Fortsetzung am 05.06.2025!
+
+## Session Info
+
+```{r}
+
+sessionInfo()
+
+```
