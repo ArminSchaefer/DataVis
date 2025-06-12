@@ -1,0 +1,695 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Funktionen
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 06/12/2025
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, scales, tinytable, emo, rio, gt, tidyverse)
+
+bt_comp <- import(here("data", "bundestag_comp.xlsx"))
+
+parteiliste <- c("Fraktionslos (AfD-Liste)", "AfD - Fraktionslos", "SSW")
+
+bt <- bt_comp %>% 
+  filter(!partei %in% parteiliste) %>% 
+  rename(gender = geschlecht) %>% 
+  mutate(
+    partei = case_match(partei,
+        c("CDU", "CSU") ~ "CDU/CSU",
+        "DIE LINKE"     ~ "LINKE",
+        .default = partei),
+    alter = 2021-geburtsjahr,
+    gender = case_when(
+      gender == 0 ~ "m",
+      gender == 1 ~ "w"))
+
+ces <- import(here("data", "ces_usa.csv"))
+
+```
+
+
+## Vorsicht beim Einsatz von `na.omit()`!
+
+Häufig stören fehlende Werte in einem Datensatz, weil sie unter Umständen in der Grafik dargestellt werden. Es gibt verschiedene Wege damit umzugehen. Eine Möglichkeit ist, die fehlenden Werte mit `na.omit()` zu entfernen. Das ist aber nicht immer sinnvoll, da dadurch ganze Zeilen gelöscht werden, die unter Umständen für andere Variablen noch Daten enthalten.
+
+## Vorsicht beim Einsatz von `na.omit()`!
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+
+ces %>%
+  na.omit() %>% 
+  tally()
+
+
+ces %>% 
+  select(CC22_340a) %>% 
+  na.omit() %>% 
+  tally()
+  
+```
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+
+ces %>%
+  filter(!is.na(CC22_340a)) %>% 
+  tally()
+
+ces %>%
+  select(CC22_340a) %>% 
+  filter(!is.na(CC22_340a)) %>% 
+  tally()
+  
+```
+
+:::
+
+::::
+
+# Fortsetzung `group_by()`
+
+## Von Individuen zu Gruppen mit `group_by()`
+
+```{r}
+#| echo: true
+
+bt %>% 
+  group_by(partei) %>%
+  summarise(mean_alter = mean(alter, na.rm=TRUE)) %>% # erstellt Aggregatdatensatz
+  tt(digit = 3) %>% style_tt(fontsize = .5) %>% # vom tinytable-Package
+  style_tt(i=0, fontsize = 0.5)
+
+```
+
+
+## Durchschnitt pro Gruppe mit zwei Argumenten
+
+```{r}
+#| echo: true
+#| code-line-numbers: "3"
+
+bt %>% 
+  filter(!is.na(gender)) %>% 
+  group_by(gender, partei) %>%
+  summarise(mean_alter = mean(alter, na.rm=TRUE)) %>% 
+  pivot_wider(names_from = gender, values_from = mean_alter) %>% 
+  tt(digit = 3) %>% style_tt(fontsize = .5) %>% style_tt(i=0, fontsize = 0.5)
+
+```
+
+## Mehrere Berechnungen pro Gruppe
+
+```{r}
+#| echo: true
+
+bt %>% 
+  group_by(partei) %>%
+  summarise(mean_alter = mean(alter, na.rm=TRUE),   # mean = Mittelwert
+            med_alter  = median(alter, na.rm=TRUE), # median = Median
+            std_alter  = sd(alter, na.rm=TRUE),     # sd = Standardabweichung
+            min_alter  = min(alter),                # min = Minimum
+            max_alter  = max(alter),                # max = Maximum
+            obs        = n()) %>%                   # n = Anzahl
+  tt(digit = 3) %>% style_tt(fontsize = .5) %>% style_tt(i=0, fontsize = 0.5)
+
+```
+
+## Mittelwerte und Streuung
+
+:::: {.columns}
+
+::: {.column width="55%"}
+
+```{r}
+#| echo: true
+#| eval: false
+
+bt %>% 
+  group_by(partei) %>%
+  summarise(mean_alter = mean(alter, na.rm=TRUE), 
+            std_alter  = sd(alter, na.rm=TRUE)) %>% 
+  ggplot(aes(x = partei, y = mean_alter, 
+             ymin = mean_alter - std_alter, 
+             ymax = mean_alter + std_alter)) +
+  geom_pointrange(color = "deeppink2")+
+  scale_y_continuous(limits = c(20,80))+
+  labs(x = NULL, y = "Alter der Abgeordneten")
+
+```
+
+:::
+
+::: {.column width="45%"}
+
+```{r}
+#| echo: false
+
+bt %>% 
+  group_by(partei) %>%
+  summarise(mean_alter = mean(alter, na.rm=TRUE), 
+            std_alter  = sd(alter, na.rm=TRUE)) %>% 
+  ggplot(aes(x = partei, y = mean_alter, 
+             ymin = mean_alter - std_alter, 
+             ymax = mean_alter + std_alter)) +
+  geom_pointrange(size = 1.2, color = "deeppink2")+
+  scale_y_continuous(limits = c(20,80))+
+  labs(x = NULL, y = "Alter der Abgeordneten")+
+  theme(base_size = 16)
+
+```
+
+
+
+:::
+
+:::: 
+## Durchschnitt pro Gruppe im Originaldatensatz
+
+```{r}
+#| echo: true
+#| code-line-numbers: "3"
+
+bt %>% 
+  group_by(partei) %>%
+  mutate(mean_alter = mean(alter, na.rm=TRUE)) %>% 
+  select(name, partei, alter, mean_alter) %>% 
+  head()%>% 
+  tt(digit = 3) %>% style_tt(fontsize = .5) %>% style_tt(i=0, fontsize = 0.5)
+
+```
+
+## `summarise()` vs. `mutate()`
+
+::: {.callout-important title="Sehr wichtig!"}
+
+Wenn Sie `group_by()` mit `summarise()` kombinieren, erhalten Sie immer **aggregierte Informationen** -- d.h., die Invidualdaten verschwinden. Nutzen Sie hingegen die Kombination `group_by()` und `mutate()` werden zwar die Rechenoperationen oder die  Datenumwandlung *auf Gruppenebene durchgeführt*, die Ergebnisse aber **dem Individualdatensatz hinzugefügt**!
+
+Überlegen Sie vorab, was Sie benötigen.
+
+:::
+
+## Übung
+
+Verwenden Sie den Datensatz `bt` und erstellen Sie eine Grafik mit `geom_boxplot()`, die das Alter der Abgeordneten nach Partei zeigt. Fügen Sie der Grafik das Durchschnittsalter in den Fraktionen als rote Punkte hinzu.
+
+## Individual- und Aggregatdaten in einem Plot
+
+```{r}
+#| echo: true
+#| out-width: 70%
+
+ave_age <- bt %>% 
+  group_by(partei) %>% 
+  summarise(mean_alter = mean(alter, na.rm=TRUE)) # erstellt Aggregatdatensatz
+
+ggplot()+
+  geom_violin(data = bt, # Individualdatensatz
+              aes(x = partei, y = alter)) + 
+  geom_point(data = ave_age, # Aggregatdatensatz
+    aes(x = partei, y = mean_alter), color = "red", size = 3)
+
+```
+
+## ... geht auch
+
+```{r}
+#| echo: true
+#| out-width: 60%
+
+bt %>% 
+  group_by(partei) %>% 
+  mutate(mean_alter = mean(alter, na.rm=TRUE)) %>% 
+  ggplot()+
+  geom_violin(aes(x = fct_reorder(partei, mean_alter), y = alter)) + 
+  geom_point(aes(x =  fct_reorder(partei, mean_alter), y = mean_alter),
+              color = "red", size = 3)+
+  labs(x = NULL, y = "Alter")
+
+```
+
+## Mehrere Datensätze in `ggplot()`
+
+::: {.callout-note title="Hinweis"}
+
+In `ggplot()` können Sie mehrere Datensätze gleichzeitig verwenden, indem Sie in den einzelnen `geom_`-Funktionen die jeweiligen Datensätze angeben. Das ist besonders nützlich, wenn Sie Individual- und Aggregatdaten in einem Plot kombinieren möchten.
+
+:::
+
+# Funktionen
+
+## DRY-Prinzip
+
+Das DRY-Prinzip steht für "**Don't Repeat Yourself**" und ist ein grundlegendes Prinzip beim Kodieren. Ziel ist es, Redundanzen im Code zu minimieren, um Lesbarkeit und Effizienz zu verbessern und Fehler zu vermeiden.
+
+Die Idee hinter dem DRY-Prinzip ist, dass jedes Wissenselement oder jede Regel in einem System an genau einer Stelle vorhanden sein sollte. Wenn dieselbe Information oder derselbe Code an mehreren Stellen des Skripts wiederholt wird, müssen Änderungen an vielen Stellen vorgenommen werden, was ineffizent und fehleranfällig ist.
+
+Funktionen sind ein Weg, DRY umzusetzen.
+
+## Einführung: Fehleranfälligkeit
+
+```{r}
+#| eval: false
+#| echo: true
+
+df <- tibble(
+  a = rnorm(5),
+  b = rnorm(5),
+  c = rnorm(5),
+  d = rnorm(5))
+
+df %>% mutate(
+  a = (a - min(a, na.rm = TRUE)) / 
+    (max(a, na.rm = TRUE) - min(a, na.rm = TRUE)),
+  b = (b - min(b, na.rm = TRUE)) / 
+    (max(b, na.rm = TRUE) - min(a, na.rm = TRUE)),
+  c = (c - min(c, na.rm = TRUE)) / 
+    (max(c, na.rm = TRUE) - min(c, na.rm = TRUE)),
+  d = (d - min(d, na.rm = TRUE)) / 
+    (max(d, na.rm = TRUE) - min(d, na.rm = TRUE))
+)
+
+```
+
+Wo liegt der Fehler?^[Das Beipsiel ist [R for Data Science](https://r4ds.hadley.nz/functions) entnommen.]
+
+## Aufbau von Funktionen
+
+Funktionen sind *immer gleich aufgebaut*. Zunächst legen wir einen **Namen** fest, dann sagen wir, dass mit `function()` eine Funktion erstellt wird. Anschließend legen wir in der **runden Klammer** fest, welche Variablen (oder anderes) verwendet werden sollen. In der **geschweiften Klammer** wird anschließend definiert, was die Funktion tun soll.
+
+```{r}
+#| eval: false
+#| echo: true
+
+name_der_funktion <- function(var1){
+  ergebnis <- befehl(var1)
+  return(ergebnis)
+} 
+
+name_der_funktion(var1) # wendet die Funktion an
+
+```
+
+## Aufbau von Funktionen
+
+Erstellen Sie nun einen Vektor x, der die Zahlen 1 bis 100 (`x <- c(1:100)`) enthält, und erstellen Sie eine Funktion, die daraus den Mittelwert berechnet.
+
+```{r}
+#| eval: false
+#| echo: true
+
+name_der_funktion <- function(var1){
+  ergebnis <- befehl(var1)
+  return(ergebnis)
+} 
+
+name_der_funktion(var1) # wendet die Funktion an
+
+```
+
+## Ein erstes Beispiel
+
+```{r}
+#| echo: true
+
+x <- c(1:100)
+
+mtw <- function(var1){
+  mtwx <- sum(var1)/length(var1)
+  return(mtwx)
+  } # muss nicht in einer neuen Zeilen steht, hilft aber beim Lesen.
+
+mtw(x) # jetzt wenden wir die Funktion auf "x" an.
+
+```
+
+## Variablen skalieren
+
+Im nächsten Schritt wollen wir zunächst eine Variable, dann mehrere Variablen zwischen 0 und 1 skalieren. Wir beginnen mit einem ausgedachten Beispiel, bevor wir den Datensatz verwenden.
+
+```{r}
+#| echo: true
+
+x <- c(3,5,7,9) # diese Zahlen werden skaliert. Es gibt keine NAs.
+
+x_rs <- ((x - min(x)) / (max(x) - min(x)))
+
+round(x_rs, 2) # Sie erinnern sich an diesen Befehl, nicht wahr?
+
+```
+
+Was müssen wir tun, wenn fehlende Werte vorhanden sind?
+
+## Variablen skalieren
+
+```{r}
+#| echo: true
+
+x <- c(3,5,7,9,NA) 
+
+x_rs <- ((x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
+
+round(x_rs, 2)
+
+```
+
+Schreiben Sie nun eine Funktion mit dem Namen [rescale01]{.tip}, die diese Skalierung enthält.
+
+## Skalierungsfunktion
+
+```{r}
+#| echo: true
+
+rescale01 <- function(var1){
+    (var1 - min(var1, na.rm = TRUE)) / 
+    (max(var1, na.rm = TRUE) - min(var1, na.rm = TRUE))
+}
+
+round(rescale01(x),2) 
+
+```
+
+Weitere Tests.
+
+```{r}
+#| echo: true
+
+rescale01(c(-10, -7, 0, 4, 10))
+
+rescale01(c(1, 2.8, 3, 4.1, 5))
+
+rescale01(c(-2,-0.5,1,4,7))
+
+```
+
+## Echte Daten skalieren
+
+```{r}
+#| echo: true
+
+age_rs <- rescale01(ces$age)
+
+summary(age_rs) # dieser Befehl zeigt Kernzahlen eines Vektors an
+
+rm(age_rs)
+
+```
+
+## Echte Daten skalieren
+
+Nun fügen wir dem Datensatz neue, reskalierte Variablen hinzu. Wir verwenden die Variablen "age", "inc6", "urbancity" und "newsint".
+
+```{r}
+#| echo: true
+
+ces %>% 
+  mutate(
+    age_rs = rescale01(age),
+    inc_rs = rescale01(inc6),
+    urb_rs = rescale01(urbancity),
+    new_rs = rescale01(newsint)) %>% 
+  names()
+
+```
+
+## Ein visueller Eindruck
+
+```{r}
+#| out-width: 60%
+#| echo: true
+
+ces %>% 
+  mutate(
+    age_rs = rescale01(age),
+    inc_rs = rescale01(inc6),
+    urb_rs = rescale01(urbancity),
+    new_rs = rescale01(newsint)
+  ) %>% 
+  ggplot(aes(x = age, y = age_rs))+
+  geom_point()+ theme_light()
+
+```
+
+## ...aber noch zu viele Wiederholungen
+
+Statt die Variablen einzeln zu bearbeiten, verwenden wir `across()`. Die Kombination aus `mutate()` und `across()` erlaubt es, Funktionen auf mehrere Spalten eines Datensatzes anzuwenden:
+
+```{r}
+#| echo: true
+
+test <- ces %>% # nicht den Datensatz überschreiben!
+  mutate(across(c(age, inc6, urbancity, newsint), rescale01))
+
+```
+
+::: {.callout-important title="Wichtig!"}
+
+Die Funktion `rescale01` wird **exakt** so angewendet, wie sie vorab definiert wurde, und kann innerhalb von `across()` **nicht weiter verändert werden** -- deshalb folgen ausnahmsweise **keine Klammern** nach der Funktion.
+
+:::
+
+## Neue Variablen mit `mutate(across())`
+
+```{r}
+#| echo: true
+
+ces <- ces %>% 
+  mutate(across(c(age, inc6, urbancity, newsint), rescale01,
+                .names = "{.col}_rs"))
+
+```
+
+Der Befehl `.names` gibt an, wie die neu zu erstellenden Variablen benannt werden. Der neue Name folgt nach dem Gleichheitszeichen. In diesem Fall sagen wir mit `{.col}`, dass der Ursprungsname genommen und mit dem Zusatz `_rs` ergänzt werden soll. Nicht intuitiv, aber sehr nützlich.
+
+## Bestehende Funktionen anwenden
+
+::: {.callout-tip title="Tipp"}
+
+Statt Spalten/Variablen durch ihre Namen auszuwählen, können wir auch die Auswahloptionen `starts_with()` oder `ends_with()` verwenden -- aber nur, **falls die Auswahl damit eindeutig ist**! Weitere Auswahloptionen sind `everything()` oder z.B. `where(is.numeric)`.
+
+:::
+
+```{r}
+#| echo: true
+
+ces_agg <- ces %>% 
+  summarise(across(ends_with("_rs"), mean))
+
+```
+
+Warum erhalten wir fehlende Werte? Geben Sie `?mean` in die Konsole ein.
+
+## Voreinstellungen
+
+Voreinstellungen von `mean(): mean(x, na.rm = FALSE, ...)` $\Rightarrow$ fehlende Werte werden **nicht ausgeschlossen** -- aber der Mittelwert kann nur berechnet werden, wenn es *keine fehlende Werte* gibt. Deshalb müssen wir immer folgende Syntax verwenden: `mean(x, na.rm = TRUE)` -- aber innerhalb von `across()` geht das nicht ohne weiteres. `r emo::ji("confused")`
+
+## Manuelle Abhilfe
+
+Wandeln Sie deshalb die oben geschriebene Funktion `mtw()` so um, dass fehlende Werte ignoriert werden. Sie benötigen `sum(var1, na.rm=TRUE)` und `length(na.omit(var1))`.^[`length()` zählt alle Zeilen, auch wenn dort fehlende Werte enhalten sind. Wir müssen deshalb festlegen, dass diese Zeilen ignoriert werden.] Fügen Sie diese Funktion in die vorherige Syntax ein.
+
+## Mittelwert-Funktion anpassen
+
+```{r}
+#| echo: true
+
+mtw <- function(var1){
+  mtwx <- sum(var1, na.rm=TRUE)/length(na.omit(var1))
+  }
+
+ces_agg <- ces %>% 
+  summarise(across(ends_with("_rs"), mtw))
+
+```
+
+Einheitlicher wäre folgende Schreibweise:
+
+```{r}
+#| eval: false
+#| echo: true
+
+
+mtw <- function(var1){
+  mtwx <- sum(na.omit(var1))/length(na.omit(var1))
+  }
+
+```
+
+## Bestehende Funktionen anwenden
+
+Vordefinierte Funktionen -- die wir nicht ausdrücklich mit `name <- function...` definieren -- nennt man [anonyme]{.alert} oder [Lambda]{.alert}-Funktionen. Um sie in `mutate(across...)` verändern zu können, müssen wir sie im Code **explizit als Funktion** benennen:
+
+```{r}
+#| echo: true
+
+ces_agg <- ces %>% 
+  summarise(across(ends_with("_rs"), function(x) mean(x, na.rm = TRUE)))
+
+```
+
+Statt des Worts `function` können wir auch `\` verwenden -- das ist aber vielleicht weniger leicht nachzuvollziehen.
+
+```{r}
+#| echo: true
+
+ces_agg <- ces %>% 
+  summarise(across(ends_with("_rs"), \(x) mean(x, na.rm = TRUE)))
+
+```
+
+## Übung
+
+Definieren Sie jetzt eine Funktion, die Variablen z-transformiert, d.h. sie haben die Mittelwert "0" und eine Standardabweichung von "1".
+
+Wenden Sie diese Funktion auf die Variablen "age" und "inc6" im Datensatz [ces]{.tip} an, und generieren Sie neue Variablen, die dem Namen den Zusatz `_z` hinzufügen.
+
+## Z-transformation
+
+```{r}
+#| echo: true
+
+z_score <- function(x) {
+  (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
+}
+
+ces <- ces %>% 
+  mutate(across(c(age, inc6), z_score, .names = "{.col}_z"))
+
+round(mean(ces$age_z),2)
+
+sd(ces$age_z)
+
+```
+
+::: {.callout-tip title="Tipp"}
+
+Falls Sie ein neues Skript erstellen, ist es sinnvoll, alle Funktionen *an den Anfang* zu stellen. Wenn Sie den Cursor auf die Funktion richten und F2 drücken, landen Sie automatisch dort, wo sie definiert wurde.
+
+:::
+
+## Zahlen in Missings umwandeln
+
+In den Spalten [CC22_330a]{.tip}, [CC22_330b]{.tip} und [CC22_330c]{.tip} sind die fehlenden Werte als -999, -998 und -997 angegeben -- das kommt bei Umfragen häufiger vor.^[In diesem Fall habe ich diese Werte zu Übungszwecken erzeugt.] Geben Sie in die Konsole `table(ces$CC22_330a, useNA = "ifany")` ein. Wir definieren eine Funktion, mit der diese Zahlen in `NA` umgewandelt werden.
+
+```{r}
+#| echo: true
+
+missings <- c(997, 998, 999)
+
+fix_na <- function(x) {
+  if_else(x %in% missings, NA, x) 
+}
+# da wir nicht die Zahlen selbst nennen, ist die Funktion flexibler einsetzbar!
+
+ces <- ces %>% 
+  mutate(across(CC22_330a:CC22_330c, fix_na))
+
+```
+
+## Variablenlevel umbenennen
+
+::: {style="font-size: 0.8em"}
+
+In der Übungsaufgabe haben Sie die Variablen [CC22_340a]{.tip} und [CC22_340g]{.tip} verwendet. Diese Variablen haben acht Ausprägungen und NAs. Das Ziel ist nun, eine Funktion zu erstellen, die die Zahlen der Zellen in die in der Tabelle genannten Label umwandelt und den Wert "8" (not sure) zu einem fehlenden Wert erklärt. D.h., wir benötigen eine Funktion mit `case_when()`.
+
+:::
+
+```{r}
+#| echo: false
+#| out-width: 70%
+
+knitr::include_graphics(here("pics", "ces_codebook.png"))
+
+```
+
+## Variablenlevel umbenennen
+
+```{r}
+#| echo: true
+
+fct_rename <- function(x) {
+  x = case_when(
+    x == 1 ~ "very liberal",
+    x == 2 ~ "liberal",
+    x == 3 ~ "somewhat liberal",
+    x == 4 ~ "middle of the road",
+    x == 5 ~ "somewhat conservative",
+    x == 6 ~ "conservative",
+    x == 7 ~ "very conservative"
+  )
+}
+
+tmp <- ces %>% # nicht unseren Datensatz verändern!
+  mutate(across(c(CC22_340a, CC22_340g), fct_rename, 
+                .names = "{.col}_fac"))
+
+```
+
+::: {style="font-size: 0.8em"}
+
+Was müssen Sie ändern, um diese Umkodierung auf **alle acht Variablen** anzuwenden, die dieselbe Art von Einschätzungen abfragen (sie beginnen alle mit "CC22_340")?
+
+:::
+
+## Umbenennen, dann ordnen
+
+Label mit der erstellten Funktion `fct_rename` vergeben.
+
+```{r}
+#| echo: true
+
+ces <- ces %>% 
+  mutate(across(starts_with("CC22_340"), fct_rename, 
+                .names = "{.col}_fac"))
+
+```
+
+Jetzt mit der [anonymen]{.alert} (nicht von uns definierten) Funktion `fct_relevel()` ordnen.
+
+```{r}
+#| echo: true
+
+ordered_levels <- c("very liberal", "liberal", "somewhat liberal", 
+                   "middle of the road", "somewhat conservative", 
+                   "conservative", "very conservative")
+
+ces <- ces %>% 
+  mutate(across(ends_with("_fac"), function(x) fct_relevel(x, ordered_levels))) 
+
+```
+
+
+## Session Info
+
+```{r}
+
+sessionInfo()
+
+```

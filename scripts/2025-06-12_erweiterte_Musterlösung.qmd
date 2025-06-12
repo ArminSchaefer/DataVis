@@ -1,0 +1,129 @@
+---
+title: Musterlösung mit Funktionen
+subtitle: Übungsaufgabe vom 22.05.2025
+format: pdf
+execute:
+  echo: true
+  message: false
+  warning: false
+date: 06/12/2025
+date-format: DD.MM.YYYY
+---
+
+## Einleitung
+
+In dieser erweiterten Musterlösungen wende ich **Funktionen** an, um den Code zu vereinfachen und Fehler durch Wiederholungen zu vermeiden. Die Annotation habe ich automatisert durch ChatGPT erstellen lassen.
+
+## Loading packages and data
+
+\small
+```{r}
+#| echo: true
+#| message: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, rio, scales, tidyverse)
+
+ces <- import(here("data", "ces_usa.csv"))
+
+```
+
+## Preparing the data
+
+\small
+```{r}
+#| echo: true
+
+# Define a function to rename factor levels
+fct_rename <- function(x) {
+  x = case_when(
+    x == 1 ~ "very liberal",
+    x == 2 ~ "liberal",
+    x == 3 ~ "somewhat liberal",
+    x == 4 ~ "middle of the road",
+    x == 5 ~ "somewhat conservative",
+    x == 6 ~ "conservative",
+    x == 7 ~ "very conservative"
+  )
+}
+
+# Define the desired order of factor levels
+ordered_levels <- c("very liberal", "liberal", "somewhat liberal", 
+                   "middle of the road", "somewhat conservative", 
+                   "conservative", "very conservative")
+
+# Apply data transformations using dplyr and forcats
+ces <- ces %>% 
+  
+  # Create new columns 'ideo_ego' and 'ideo_scotus' with data from 
+  # 'CC22_340a' and 'CC22_340g' respectively
+  mutate(ideo_ego = CC22_340a, ideo_scotus = CC22_340g) %>% 
+  
+  # Apply the fct_rename function to columns starting with 'ideo_' and add
+  # '_fac' at the end of the original column name
+  mutate(across(starts_with("ideo_"), fct_rename, .names = "{.col}_fac")) %>% 
+  
+  # Reorder levels in columns that end with '_fac' 
+  # based on 'ordered_levels' defined above
+  mutate(across(ends_with("_fac"), \(x) fct_relevel(x, ordered_levels))) %>% 
+  
+  # Filter out rows where either 'ideo_ego_fac' or 'ideo_scotus_fac' is NA
+  filter(!is.na(ideo_ego_fac), !is.na(ideo_scotus_fac)) %>% 
+  
+  # Group by 'ideo_ego_fac' and 'ideo_scotus_fac' 
+  #and summarize the number of observations in each group
+  group_by(ideo_ego_fac, ideo_scotus_fac) %>% 
+  summarize(group_obs = n()) %>% 
+  
+  # Calculate frequency and percentage based on 
+  # the number of observations in each group
+  mutate(freq = group_obs / sum(group_obs),
+         pct = round((freq * 100), 2))
+
+
+```
+
+## Creating the plot
+
+\small
+```{r}
+#| echo: true
+#| label: fig-supreme_court
+#| fig-cap: "Die Sicht der US-Bürger:innen auf den Supreme Court."
+
+# Create a ggplot with specified aesthetics
+ggplot(data = ces, aes(x = ideo_ego_fac, y = pct, fill = ideo_scotus_fac)) +
+  
+  # Add a column chart layer
+  geom_col() +
+  
+  # Use viridis color scale with reversed direction
+  scale_fill_viridis_d(direction = -1) +
+  
+  # Set y-axis breaks at intervals of 10
+  scale_y_continuous(breaks = seq(0, 100, by = 10)) +
+  
+  # Flip the coordinates to create a horizontal bar chart
+  coord_flip() +
+  
+  # Customize plot labels
+  labs(fill = NULL,  # Remove fill legend title
+       x = "Ideological self-placement",  # X-axis label
+       y = "Perceived position Supreme Court") +  # Y-axis label
+  
+  # Use a minimal theme
+  theme_minimal() +
+  
+  # Customize additional theme elements
+  theme(legend.position = "top",  # Move legend to the top
+        axis.title = element_text(face = "bold"),  # Bold axis titles
+        legend.text = element_text(size = 6),  # Set legend text size
+        legend.key.size = unit(.3, 'cm'),  # Set legend key size
+        plot.title = element_text(size = 10, face = "bold")) +
+  
+  # Reverse the order of items in the legend
+  guides(fill = guide_legend(reverse = TRUE))
+
+
+
+```

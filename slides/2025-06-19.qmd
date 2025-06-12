@@ -1,0 +1,620 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Funktionen II
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+execute:
+  echo: true
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+from: markdown+emoji
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 12/20/2024
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, scales, readxl, gt, tidyverse)
+
+ces <- read_csv(here("data", "ces_usa.csv"))
+
+```
+
+## Bisher definierte Funktionen
+
+```{r}
+
+# Mittelwert
+mtw <- function(var1){
+  mtwx <- mean(var1, na.rm=TRUE)
+  }
+
+# Skalieren
+rescale01 <- function(var1){
+    (var1 - min(var1, na.rm = TRUE)) / 
+    (max(var1, na.rm = TRUE) - min(var1, na.rm = TRUE))
+}
+
+# z-Transformation
+z_score <- function(x) {
+  (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
+}
+
+```
+
+## Zahlen in Missings umwandeln
+
+In den Spalten [CC22_330a]{.tip}, [CC22_330b]{.tip} und [CC22_330c]{.tip} sind die fehlenden Werte als -999, -998 und -997 angegeben -- das kommt bei Umfragen häufiger vor.^[In diesem Fall habe ich diese Werte zu Übungszwecken erzeugt.] Geben Sie in die Konsole `table(ces$CC22_330a, useNA = "ifany")` ein. Wir definieren eine Funktion, mit der diese Zahlen in `NA` umgewandelt werden.
+
+```{r}
+
+missings <- c(-997, -998, -999)
+
+fix_na <- function(x) {
+  if_else(x %in% missings, NA, x) 
+}
+# da wir nicht die Zahlen selbst nennen, ist die Funktion flexibler einsetzbar!
+
+ces <- ces %>% 
+  mutate(across(CC22_330a:CC22_330c, fix_na))
+
+```
+
+## Variablenlevel umbenennen
+
+::: {style="font-size: 0.8em"}
+
+In der Übungsaufgabe haben Sie die Variablen [CC22_340a]{.tip} und [CC22_340g]{.tip} verwendet. Diese Variablen haben acht Ausprägungen und NAs. Das Ziel ist nun, eine Funktion zu erstellen, die die Zahlen der Zellen in die in der Tabelle genannten Label umwandelt und den Wert "8" (not sure) zu einem fehlenden Wert erklärt. D.h., wir benötigen eine Funktion mit `case_when()`.
+
+:::
+
+```{r}
+#| echo: false
+#| out-width: 70%
+
+knitr::include_graphics(here("pics", "ces_codebook.png"))
+
+```
+
+## Variablenlevel umbenennen
+
+```{r}
+
+fct_rename <- function(x) {
+  x = case_when(
+    x == 1 ~ "very liberal",
+    x == 2 ~ "liberal",
+    x == 3 ~ "somewhat liberal",
+    x == 4 ~ "middle of the road",
+    x == 5 ~ "somewhat conservative",
+    x == 6 ~ "conservative",
+    x == 7 ~ "very conservative"
+  )
+}
+
+tmp <- ces %>% # nicht unseren Datensatz verändern!
+  mutate(across(c(CC22_340a, CC22_340g), fct_rename, 
+                .names = "{.col}_fac"))
+
+```
+
+::: {style="font-size: 0.8em"}
+
+Was müssen Sie ändern, um diese Umkodierung auf **alle acht Variablen** anzuwenden, die dieselbe Art von Einschätzungen abfragen (sie beginnen alle mit "CC22_340").
+
+:::
+
+## Umbenennen, dann ordnen
+
+Label mit der erstellten Funktion `fct_rename` vergeben.
+
+```{r}
+
+ces <- ces %>% 
+  mutate(across(starts_with("CC22_340"), fct_rename, 
+                .names = "{.col}_fac"))
+
+```
+
+Jetzt mit der [anonymen]{.alert} (nicht von uns definierten) Funktion `fct_relevel()` ordnen.
+
+```{r}
+
+ordered_levels <- c("very liberal", "liberal", "somewhat liberal", 
+                   "middle of the road", "somewhat conservative", 
+                   "conservative", "very conservative")
+
+ces <- ces %>% 
+  mutate(across(ends_with("_fac"), function(x) fct_relevel(x, ordered_levels))) 
+
+```
+
+# Grafiken in einer Funktion erzeugen
+
+## Unsere Grafik (in nicht perfekter Darstellung)
+
+```{r}
+#| out-width: 60%
+
+ces %>% 
+  filter(!is.na(CC22_340a_fac), !is.na(CC22_340g_fac)) %>% 
+  ggplot(aes(x = CC22_340a_fac, fill = CC22_340g_fac)) +
+  geom_bar(position = "fill") +
+  scale_fill_viridis_d(direction = -1) +
+  labs(x = "Ideological self-placement",
+       y = "Perceived position Supreme Court", fill = NULL)+
+  coord_flip()+ # vertauscht x- und y-Achse.
+  theme(legend.position = "top")
+
+```
+
+## Eine ggplot-Funktion
+
+Wir ersetzen als erstes den Datensatz durch [data]{.tip}.
+
+```{r}
+#| eval: false
+
+our_ggplot <- function(data){
+  
+  data %>% 
+  filter(!is.na( CC22_340a_fac ), !is.na( CC22_340g_fac )) %>% 
+  ggplot(aes(x = CC22_340a_fac, fill = CC22_340g_fac )) +
+  geom_bar(position = "fill") +
+  scale_fill_viridis_d(direction = -1) +
+  labs(x = "Ideological self-placement",
+       fill = NULL,
+       y = "Perceived position Supreme Court")+
+  coord_flip()+
+  theme(legend.position = "top")
+}
+
+our_ggplot(ces)
+
+```
+
+
+## Eine ggplot-Funktion
+
+Nun ersetzen wir nicht nur den Datensatz durch [data]{.tip}, sondern auch die Variablen durch die Platzhalter ([var1]{.tip} und [var2]{.tip}).
+
+```{r}
+#| eval: false
+our_ggplot <- function(data, var1, var2){
+  
+  data %>% 
+  filter(!is.na( var1 ), !is.na( var2 )) %>% 
+  ggplot(aes(x = var1, fill = var2 )) +
+  geom_bar(position = "fill") +
+  scale_fill_viridis_d(direction = -1) +  
+  labs(x = "Ideological self-placement",
+       fill = NULL,
+       y = "Perceived position Supreme Court")+
+  coord_flip()+
+  theme(legend.position = "top")
+}
+
+our_ggplot(ces, CC22_340a_fac, CC22_340g_fac)
+
+```
+
+Funktioniert nicht :disappointed:.
+
+## Wonach sucht R in diesem Fall?
+
+In der `tidyverse`-Variante von R können wir Befehle miteinander verbinden. Wir rufen zunächsten den Datensatz auf und fügen dann weitere Befehle an. Der Vorteil ist, dass wir den Datensatznamen nicht immer wieder einfügen müssen, was v.a. bei längeren Befehlsketten hilfreich ist.
+
+`mean(ces$age, na.rm = TRUE)` vs. 
+
+`ces %>% summarise(age = mean(age, na.rm = TRUE))`.
+
+## Der "Tunnel" {{ }}
+
+In einer Funktion sucht R nach Spalten, die den genannten Namen (z.B. "var1") haben. Aber eine Spalte mit diesem Namen gibt es im Datensatz [ces]{.tip} nicht -- deshalb bekommen wir eine Fehlermeldung.
+
+Wir müssen R mitteilen, dass es sich bei "var1" und "var2" um **Platzhalter** handelt, die selbst **keine Variablennamen sind**. Dies geschieht mit einer doppelten geschweiften Klammer: {{ }}.^[Bildlich können Sie sich das wie einen Tunnel oder ein Fernrohr vorstellen, an deren Ende die Variablen stehen, die wir verwenden möchten.]
+
+## Eine Funktion mit {{ }}
+
+```{r}
+#| echo: false
+#| out-width: 95%
+
+knitr::include_graphics(here("pics", "function.png"))
+
+```
+
+Setzen Sie in diese Funktion die Variable [CC22_340d_fac]{.tip} ein. Ändert sich die Darstellung?
+
+## Die Beschriftung anpassen (...)
+
+```{r}
+#| eval: false
+
+our_ggplot <- function(data, var1, var2, ...){
+  
+  data %>% 
+  filter(!is.na( {{var1}} ), !is.na( {{var2}} )) %>% 
+  ggplot(aes(x = {{var1}}, fill = {{var2}} )) +
+  geom_bar(position = "fill") +
+  scale_fill_viridis_d(direction = -1) +
+  labs(x = "Ideological self-placement",
+       fill = NULL, ...)+
+  coord_flip()+
+  theme_light()+
+  theme(legend.position = "top")
+}
+
+our_ggplot(ces, CC22_340a_fac, CC22_340d_fac, y = "Perceived position Trump")
+
+our_ggplot(ces, CC22_340a_fac, CC22_340c_fac, y = "Perceived position Biden")
+
+```
+
+## Grafiken kombinieren
+
+```{r}
+#| echo: false
+
+our_ggplot <- function(data, var1, var2, ...){
+  
+  data %>% 
+  filter(!is.na( {{var1}} ), !is.na( {{var2}} )) %>% 
+  ggplot(aes(x = {{var1}}, fill = {{var2}} )) +
+  geom_bar(position = "fill") +
+  scale_fill_viridis_d(direction = -1) +
+  labs(x = "Ideological self-placement",
+       fill = NULL, ...)+
+  coord_flip()+
+  theme_minimal()+
+  theme(axis.text = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.position = "top",
+        legend.text = element_text(size = 6),  
+        legend.key.size = unit(.3, 'cm'))
+}
+
+```
+
+```{r}
+#| out-width: 80%
+
+library(patchwork) # oben ins Skript bei p_load einfügen!
+
+p1 <- our_ggplot(ces, CC22_340a_fac, CC22_340d_fac, y = "Perceived position Trump")
+p2 <- our_ggplot(ces, CC22_340a_fac, CC22_340c_fac, y = "Perceived position Biden")
+
+p1 + p2
+
+```
+
+## Grafiken kombinieren
+
+```{r}
+#| out-width: 70%
+
+p2 <- p2 +
+  theme(axis.title.y = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+p1 + p2+
+  plot_layout(guides = "collect") & theme(legend.position = 'top')
+
+```
+
+## Bildung und Wahlverhalten -- zweites Beispiel
+
+Wir wollen nun den Zusammenhang von Bildungsabschlüssen und Wahlverhalten untersuchen. Dazu müssen erst den Datensatz vorbereiten.
+
+```{r}
+
+ces <- ces %>% 
+  mutate(biden = ifelse(presvote20 == "Biden", 1, 0),
+         trump = ifelse(presvote20 == "Trump", 1, 0),
+         other = ifelse(presvote20 == "other", 1, 0),
+         edu = fct_relevel(edu, "high school", "some college", 
+                           "2-year college", "4-year college", 
+                           "post-grad"))
+
+```
+
+## Bildung und Wahlverhalten -- zweites Beispiel
+
+:::: {.columns}
+
+::: {.column width="35%"}
+
+
+```{r}
+#| echo: false
+#| fig-width: 5
+
+ces %>% 
+  filter(!is.na(edu)) %>% 
+  group_by(edu) %>% 
+  summarise(perc = mean(biden, na.rm=TRUE)) %>% 
+  ggplot(aes(x = edu,
+             y = perc))+
+  geom_col()+
+  geom_hline(yintercept = 0.5, color = "darkred")+
+  labs(x = NULL, y = NULL,
+       title = "Wahlergebnis Joe Biden nach Bildungsgruppen")
+
+```
+
+:::
+
+::: {.column width="65%"}
+
+```{r}
+#| eval: false
+
+ces %>% 
+  filter(!is.na(edu)) %>% 
+  group_by(edu) %>% 
+  summarise(perc = mean(biden, na.rm=TRUE)) %>% 
+  ggplot(aes(x = edu, y = perc))+
+  geom_col()+
+  geom_hline(yintercept = 0.5, color = "darkred")+
+  labs(x = NULL, y = NULL,
+       title = "Wahlergebnis Joe Biden nach Bildungsgruppen")
+
+```
+
+:::
+
+::::
+
+Erstellen Sie nun eine Funktion, damit Sie auch die Werte für Trump darstellen können.
+
+## Als Funktion
+
+```{r}
+
+fct_barplot <- function(var1, ...){
+  ces %>% 
+  filter(!is.na(edu)) %>% 
+  group_by(edu) %>% 
+  summarise(perc = mean( {{var1}}, na.rm=TRUE)) %>% 
+  ggplot(aes(x = fct_relevel(edu, "high school", "some college",
+                             "2-year college", "4-year college", "post-grad"),
+             y = perc))+
+  geom_col()+
+  geom_hline(yintercept = 0.5, color = "darkred")+
+  labs(x = NULL, y = NULL, ...)
+}
+  
+```
+
+## Ergebnis
+
+```{r}
+#| fig-width: 8
+
+fct_barplot(biden, title = "Wahlergebnis Joe Bilden nach Bildungsgruppen")
+
+```
+
+## Weitere `ggplot()`-Elemente hinzufügen
+
+```{r}
+#| fig-width: 8
+
+fct_barplot(trump, title = "Wahlergebnis Donald Trump nach Bildungsgruppen")+
+  scale_y_continuous(labels = scales::percent)+
+  theme_light()
+
+```
+
+## Weitere `ggplot()`-Elemente hinzufügen
+
+```{r}
+#| fig-width: 8
+
+fct_barplot(trump, title = "Wahlergebnis Donald Trump nach Bildungsgruppen")+
+  scale_y_continuous(labels = scales::percent)+
+  theme_light()+
+  theme(plot.title = element_text(face = "bold"))
+
+```
+
+# Themes anpassen
+
+## Überblick
+
+```{r}
+#| echo: false
+
+p1 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Voreinstellung", x = NULL)
+
+p2 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Classic", x = NULL)+
+  theme_classic()
+
+p3 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Black and white", x = NULL)+
+  theme_bw()
+
+p4 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Dark", x = NULL)+
+  theme_dark()
+
+p5 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Light", x = NULL)+
+  theme_light()
+
+p6 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Void", x = NULL)+
+  theme_void()
+
+(p1 + p2 + p3) / (p4 + p5 + p6)
+
+```
+
+## Elemente von `themes()`
+
+```{r}
+#| echo: false
+#| out-width: 65%
+#| fig-align: left
+
+knitr::include_graphics(here("pics", "elements_themes.png"))
+
+```
+
+[Quelle: [Henry Wang](https://henrywang.nl/ggplot2-theme-elements-demonstration/)]{.links}
+
+## Theme: Ausgangspunkt
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "6"
+
+p1 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(x = "Alter in Jahren")
+
+```
+
+## Theme: Achsen-Beschriftung anpassen
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "6"
+
+p1 +
+  theme(axis.title = element_text(face = "bold", size = 16))
+
+```
+
+## Theme: Achsen-Beschriftung anpassen
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "2,3"
+
+p1 +
+  theme(axis.title = element_text(face = "bold", size = 16),
+        axis.text  = element_text(size = 16))
+
+```
+
+## Theme: Titel anpassen
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "4"
+
+p1 +
+  theme(axis.title = element_text(face = "bold", size = 16),
+        axis.text  = element_text(size = 16),
+        plot.title = element_text(size = 20))
+
+```
+
+## Theme: Grid-Linien anpassen
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "2"
+
+p1 +
+  theme(panel.grid = element_line(color = "pink")) # bitte nicht
+
+```
+
+## Theme: Grid-Linien anpassen
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "2,3,4"
+
+p1 +
+  theme_light()+
+  theme(panel.grid = element_line(color = "pink"),
+        panel.grid.minor = element_blank()) # Kleinere Hilfslinien werden weglassen.
+
+```
+
+Weitere Möglichkeiten sind [hier](https://ggplot2.tidyverse.org/reference/theme.html) einsehbar.
+
+## Ein `theme` als Funktion
+
+```{r}
+
+my_theme <- function(...) theme(
+  plot.title = element_text(color = "black", 
+                            size = 14,
+                            face = "bold"),
+  axis.text = element_text(color = "black", 
+                           size = 12),
+  axis.title = element_text(color = "black",
+                            face = "bold",
+                            size = 12),
+  panel.grid.minor = element_blank())
+
+```
+
+## Verwendung
+
+```{r}
+#| fig-width: 6
+#| fig-height: 4
+
+ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Altersverteilung", x = "Alter in Jahren")+
+  my_theme()
+
+```
+
+## Kombination mit bestehenden Themes
+
+```{r}
+#| fig-width: 6
+#| fig-height: 4
+
+ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Altersverteilung", x = "Alter in Jahren")+
+  theme_light()+
+  my_theme()
+
+```
+
+## {background-video="xmas_tree.mp4" background-size="contain"}
+
+## Session Info
+
+```{r}
+
+sessionInfo()
+
+```

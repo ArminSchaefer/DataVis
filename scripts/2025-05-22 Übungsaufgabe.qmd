@@ -1,0 +1,117 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Übungsaufgabe
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 22.04.2025
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, scales, tidyverse)
+
+ces <- read_csv(here("data", "ces_usa.csv"))
+
+ces <- ces |> 
+  mutate(ideo_ego_fac = case_when(
+           CC22_340a == 1 ~ "very liberal",
+           CC22_340a == 2 ~ "liberal", 
+           CC22_340a == 3 ~ "somewhat liberal", 
+           CC22_340a == 4 ~ "middle of the road",
+           CC22_340a == 5 ~ "somewhat conservative",
+           CC22_340a == 6 ~ "conservative",
+           CC22_340a == 7 ~ "very conservative"),
+         ideo_scotus_fac = case_when(
+           CC22_340g == 1 ~ "very liberal",
+           CC22_340g == 2 ~ "liberal", 
+           CC22_340g == 3 ~ "somewhat liberal", 
+           CC22_340g == 4 ~ "middle of the road",
+           CC22_340g == 5 ~ "somewhat conservative",
+           CC22_340g == 6 ~ "conservative",
+           CC22_340g == 7 ~ "very conservative")) |> 
+  filter(!is.na(ideo_ego_fac), !is.na(ideo_scotus_fac)) |> 
+  group_by(ideo_ego_fac, ideo_scotus_fac) |> 
+  summarize(group_obs = n())  |> 
+  mutate(freq = group_obs / sum(group_obs),
+         pct = round((freq * 100), 2))
+
+
+```
+
+Ihre Aufgabe besteht darin, die folgende Grafik selbst zu erstellen. Hinweise folgen auf den nächsten Seiten.
+
+```{r}
+#| echo: false
+
+ordered_levels <- c("very liberal", "liberal", "somewhat liberal", 
+                   "middle of the road", "somewhat conservative", 
+                   "conservative", "very conservative")
+
+ggplot(data = ces, aes(x = fct_relevel(ideo_ego_fac, ordered_levels), 
+                       y = pct, 
+                       fill = fct_relevel(ideo_scotus_fac, ordered_levels))) +
+  geom_col() +
+  scale_fill_viridis_d(direction = -1) +
+  scale_y_continuous(breaks = seq(0, 100, by = 10)) +
+  coord_flip() +
+  labs(fill = NULL,
+       x = "Ideological self-placement", 
+       y = "Perceived position Supreme Court") +
+  theme_minimal() +
+  theme(legend.position = "top",
+        axis.title = element_text(face = "bold"),
+        legend.text = element_text(size=6),
+        legend.key.size = unit(.3, 'cm'),
+        plot.title = element_text(size = 10, face = "bold"))+
+  guides(fill = guide_legend(reverse = TRUE))
+
+
+```
+
+## YAML ergänzen
+
+Wenn Sie das Quarto-Dokument als PDF-Datei erstellen möchten, müssen Sie die Präambel anpassen ("YAML"). Bisher haben wir ein html-Dokument erstellt, doch jetzt wechseln Sie zu PDF:
+
+```{r}
+#| echo: false
+#| out-width: 70%
+#| fig-align: center
+
+knitr::include_graphics(here("pics", "yaml_pdf.png"))
+
+```
+
+## Datensatz
+
+Der Datensatz, den Sie verwenden werden, ist ein kleiner Ausschnitt aus der [Cooperative Election Study](https://cces.gov.harvard.edu/), die eine Fülle von Fragen zu US-amerikanischer Politik enhält. Die Studie zeichnet sich durch eine besonders hohe Anzahl von Befragten aus, weil zum Teil Analysen auf regionaler oder sogar bundesstaatlicher Ebene vorgenommen werden.
+
+Sie finden die Datei unter dem Namen [ces_usa.csv]{.tip} im Ordner "Datensätze" in Moodle. Dort ist auch ein Auszug aus dem Codebuch hinterlegt, den Sie für die Bearbeitung benötigen werden.
+
+## Codieren
+
+Fast alle Arbeitsschritte, die Sie vornehmen müssen, haben wir bereits behandelt -- und trotzdem ist es vermutlich nicht einfach, diese Grafik zu erstellen. Sie dürfen alle Hilfsmittel verwenden und falls nicht alles klappt, ist es nicht schlimm.
+
+Beachten Sie, dass es im Datensatz fehlende Werte gibt und dass die Faktorenlevel der verwendeten Spalten angepasst werden müssen (siehe Codebuch).
+
+Die Farben habe ich nicht per Hand hinzugefügt, sondern mithilfe der Farbpalette `viridis`, für die es einen eigenen `scale_fill...`-Befehl gibt.
+
+## Abgabetermin
+
+Bitte laden Sie ihre Lösung als html-Dokument im entsprechenden Ordner bis zum **12.12. (18:00 Uhr)** in Moodle hoch, *selbst wenn Sie nicht alle Details hinbekommen haben*.
+
+Ab 18:00 Uhr stelle ich eine Musterlösung zur Verfügung, die Ihren Kenntnisstand spiegelt. Später werden wir lernen, wie sich das Skript durch Funktionen vereinfachen (?!) lässt.

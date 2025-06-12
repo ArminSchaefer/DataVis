@@ -1,0 +1,633 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Nützliche Werkzeuge -- Daten umformen und weitere Darstellungsarten
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 06/05/2025
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, scales, rio, ggbeeswarm, tidyverse)
+
+bundestag   <- import(here("data", "bundestag.xlsx"))
+parteifarbe <- c('#ff748c', '#1AA037', '#E3000F', 
+                 '#FFEF00', '#000000', '#0489DB')
+
+fraktionen  <- import(here("data", "bt_fraktionen.xlsx"))
+
+fraktionen_long <- fraktionen %>% # wir speichern das Ergebnis unter neuem Namen
+  pivot_longer(-c("Partei"), names_to = "Geschlecht", values_to = "Anzahl") %>% 
+  mutate(Partei = fct_relevel(Partei,
+                              "LINKE", "GRUENE", "SPD", 
+                              "FDP", "CDU/CSU", "AfD"))
+
+
+```
+
+
+```{r}
+#| label: welldone
+#| echo: false
+#| out-width: 80%
+#| fig-align: center
+
+knitr::include_graphics(here("pics", "welldone.jpg"))
+
+```
+
+## Wiederholung: Warum `%>%` nutzen?
+
+Stellen Sie sich vor, wir möchten wissen, wer die 10 jüngsten Abgeordneten des Bundestags sind. Dafür müssen wir die Daten sortieren (`arrange`) und dann die ersten 10 Zeilen auswählen (`slice`):
+
+:::: {.columns}
+::: {.column width="68%"}
+
+Ohne `%>%`
+```{r}
+#| eval: false
+#| echo: true
+
+junge_abgeordnete <- arrange(bundestag, alter)
+junge_abgeordnete <- slice(junge_abgeordnete, 1:10)
+
+junge_abgeordnete <- slice(arrange(bundestag, alter), 1:10)
+
+```
+
+:::
+::: {.column width="32%"}
+
+Mit `%>%`
+```{r}
+#| eval: false
+#| echo: true
+
+junge_ageordnete <- 
+  bundestag %>% 
+  arrange(alter) %>% 
+  slice(1:10)
+  
+```
+
+:::
+::::
+
+Der `%>%`-Operator macht den Code leichter lesbar.
+
+## Rückblick
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+<span style="color:green;">geom_histogram()</span>
+
+<span style="color:green;">geom_density()</span>
+
+<span style="color:green;">geom_point()</span>
+
+:::
+
+::: {.column width="50%"}
+
+
+<span style="color:green;">geom_jitter()</span>
+
+<span style="color:orange;">geom_boxplot()</span>
+
+<span style="color:orange;">geom_violin()</span>
+
+:::
+::::
+
+## Verteilung in Gruppen -- `geom_boxplot()`
+
+```{r}
+#| echo: true
+#| out-width: 60%
+
+ggplot(data = bundestag, aes(x = partei, y = alter))+
+  geom_boxplot()+
+  labs(x = NULL)
+
+```
+
+Die Abgeordneten der <span style="color:green;">Grünen</span> haben das niedrigste Medianalter.
+
+## Boxplot: ein visuelles Problem
+
+Obwohl Boxplots in den Sozialwissenschaften verbreitet sind, stellen sie die meisten Betrachter:innen vor Probleme, weil...
+
+* die Antennen nicht die gesamte Verteilung der Daten anzeigen,
+
+* unklar ist, nach welchen Regeln Außreißer angezeigt werden,
+
+* viele Menschen nicht mit dem Median vertraut sind,
+
+* nicht offensichtlich ist, was die Größe der Box aussagt.
+
+Deshalb könnte es nützlich sein, zusätzlich **alle zugrundeliegenden Datenpunkte** darzustellen.
+
+## Zwei Geome kombinieren
+
+```{r}
+#| echo: true
+#| out-width: 50%
+#| code-line-numbers: "2,3"
+
+ggplot(data = bundestag, aes(x = partei, y = alter, color = partei))+
+  geom_boxplot()+
+  geom_jitter(alpha = 0.5, width = 0.1)+
+  labs(x = NULL)+
+  guides(color = FALSE)
+
+```
+
+Was passiert, wenn Sie die Reihenfolge der Geome verändern?
+
+## Zwei Geome kombinieren
+
+Was hat sich verändert?^[Hier wäre es sinnvoll, die Outlier zu entfernen, da diese Punkte ohnehin durch `geom_jitter()` dargestellt werden: `geom_boxplot(outlier.shape = NA)`.]
+
+```{r}
+#| echo: true
+#| out-width: 50%
+#| code-line-numbers: "3"
+
+ggplot(data = bundestag, aes(x = partei, y = alter))+
+  geom_boxplot()+
+  geom_jitter(aes(color = partei), alpha = 0.5, width = 0.1)+
+  labs(x = NULL)+
+  guides(color = FALSE)
+
+```
+
+## Wo werden `aesthetics` festgelegt?
+
+::: {.callout-important title="Wichtig"}
+
+`aes()` legt fest, wie Daten in sichtbare Elemente übersetzt werden: z.B. in Farben, Formen, Schattierungen. Wenn wir `aes()` innerhalb von `ggplot()` bestimmen, gelten die Angaben für *alle Geome* der Grafik. Wollen wir `aes()` nur auf einzelne Geome anwenden, muss die Festlegung dort erfolgen. Z.B. `geom_jitter(aes(color = partei))`.
+
+:::
+
+## Zwei Geome kombinieren
+
+```{r}
+#| echo: true
+#| out-width: 65%
+#| code-line-numbers: "2,3"
+
+
+ggplot(data = bundestag, aes(x = partei, y = alter))+
+  geom_violin(fill = "aliceblue")+
+  geom_jitter(alpha = 0.4, width = 0.1)+
+  labs(x = NULL)+
+  theme_light()
+
+```
+
+## Drei Geome kombinieren
+
+```{r}
+#| echo: true
+#| out-width: 65%
+#| code-line-numbers: "2,3,4"
+
+ggplot(data = bundestag, aes(x = partei, y = alter))+
+  geom_violin(fill = "aliceblue")+
+  geom_boxplot(width=0.3)+
+  geom_jitter(color = "blue", alpha = 0.2, width = 0.05, size = 1)+
+  labs(x = NULL)+
+  theme_light()
+
+```
+
+## Zwei Geome kombinieren
+
+```{r}
+#| echo: true
+#| fig-width: 6
+#| fig-height: 4
+
+ggplot(data = bundestag, aes(x = geschlecht, y = alter))+
+  geom_violin(color = "grey60", fill = "grey80")+
+  geom_boxplot(color = "black", fill = "white", width=0.2)+
+  scale_y_continuous(breaks = seq(20, 80, by = 10))+
+  labs(x = NULL, y = "Alter in Jahren")+   theme_light()
+
+```
+
+## Für zu Hause
+
+Diese Grafik ist mit der Bibliothek `ggbeeswarm` erstellt worden. Sie können zu Hause versuchen, sie so genau wie möglich nachzubauen (keine Pflicht).
+
+```{r}
+#| echo: false
+#| fig-height: 4
+#| fig-width: 6
+
+ggplot(data = bundestag, aes(x = geschlecht, y = alter)) + 
+  geom_beeswarm(color = "#6C5284") +
+  scale_y_continuous(limits = c(20,80),
+                     breaks = seq(20, 80, by = 10))+
+  labs(x = NULL, y = NULL,
+       title = "Alter der Bundestagsabgeordneten")+
+  theme_bw()
+
+
+```
+
+## ggbeeswarm()
+
+```{r}
+#| echo: false
+#| include: true
+
+bundestag %>% 
+  mutate(partei = fct_relevel(partei, 
+                              "LINKE", "GRUENE", "SPD", 
+                              "FDP", "CDU/CSU", "AfD")) %>% 
+ggplot(aes(x = partei, y = alter, 
+           color = partei)) + 
+  geom_beeswarm() +
+  scale_y_continuous(limits = c(20,80), 
+                     breaks = seq(20, 80, by = 10))+
+  scale_color_manual(values = parteifarbe)+
+  labs(x = NULL, y = NULL, 
+       title = "Alter der Bundestagsabgeordneten")+
+  theme_bw()+
+  guides(color = FALSE)
+
+
+```
+
+# Datensätze bearbeiten
+
+## Daten
+
+Bitte laden Sie die Datei [bundestag_comp.xlsx]{.tip} aus dem Order "Datensätze" in Moodle herunter und speichern Sie ihn im Ordner "data".
+
+Fügen Sie den passenden Befehl in Ihr Skript ein, um den Datensatz als "bt_comp" zu speichern.
+
+```{r}
+#| echo: true
+
+bt_comp <- import(here("data", "bundestag_comp.xlsx"))
+
+```
+
+## Welche Parteien sind enthalten?
+
+```{r}
+#| echo: true
+
+table(bt_comp$partei)
+
+```
+
+Vier Abgeordnete gehören keiner Fraktion oder dem SSW an. Um die Darstellung zu vereinfachen, entfernen wir sie mit dem Befehl `filter()` aus dem Datensatz. 
+
+## Beobachtungen filtern
+
+Geben Sie nacheinander folgende Befehle **in die Konsole** ein: 
+
+`bt_comp %>% filter(partei == "CDU")`.
+
+`bt_comp %>% filter(partei != "CDU")`.^[Die `!` heißt "nicht".] 
+
+`bt_comp %>% filter(partei == "CDU" | partei == "SPD")`.^[Das Zeichen `|` steht für "oder".]
+
+## Beobachtungen filtern mit `%in%`
+
+Wenn wir viele Gruppen eines Faktors filtern möchten, ist der Weg mit der "Oder"-Verknüpfung mühselig, weil wir immer wieder "`| partei ==`" schreiben müssten. Stattdessen können wir den Operator [%in%]{.alert} verwenden, der "[aus der nachfolgenden Liste]{.alert}" bedeutet.
+
+```{r}
+#| echo: true
+
+parteiliste <- c("Fraktionslos (AfD-Liste)", "AfD - Fraktionslos", "SSW")
+
+bt <- bt_comp %>% # wir verwenden einen neuen Namen!
+  filter(partei %in% parteiliste)
+
+table(bt$partei)
+
+```
+
+Was müssen wir machen, um diese vier Abgeordneten *auszuschließen*?
+
+## Beobachtungen ausschließen mit `%in%`
+
+```{r}
+#| echo: true
+
+bt <- bt_comp %>% 
+  filter(!partei %in% parteiliste) # wir fügen das Nichtzeichen hinzu.
+
+table(bt$partei)
+
+```
+
+
+## Faktorenlevel verändern -- `case_match()`
+
+Statt CDU und CSU getrennt voneinander zu betrachten, fügen wir sie zusammen. Dafür verwenden wir das Kommando `mutate()` in Kombination mit `case_match()`.
+
+```{r}
+#| echo: true
+#| eval: false
+
+bt <- bt_comp %>% 
+  mutate(partei = case_match(
+    partei,
+    "CDU" ~ "CDU/CSU", # alter Name ~ neuer Name
+    "CSU" ~ "CDU/CSU", # alter Name ~ neuer Name
+    .default = partei)) # alle anderen Namen bleiben gleich
+
+```
+
+## Faktorenlevel verändern -- `case_match()`
+
+Dasselbe in einer Zeile
+
+```{r}
+#| echo: true
+
+bt <- bt_comp %>% 
+  mutate(partei = case_match(
+    partei,
+    c("CDU", "CSU") ~ "CDU/CSU", # alte Namen ~ neuer Name
+    .default = partei)) # alle anderen Namen bleiben gleich
+
+```
+
+Wenden Sie `case_match()` an, um "DIE LINKE" in "LINKE" umzubenennen. Prüfen Sie mit `table()`.
+
+## Faktorenlevel umbenennen
+
+```{r}
+#| echo: true
+
+bt <- bt_comp %>% 
+  mutate(partei = case_match(
+    partei, 
+    c("CDU", "CSU") ~ "CDU/CSU",
+    "DIE LINKE"     ~ "LINKE",
+    .default = partei)) 
+
+```
+
+Das Kommando `case_match()` bedeut, "wenn ... dann". Eng verwandt damit ist `case_when()`, das aber nicht die sehr nützliche `.default`-Option enthält.
+
+## Case_when()
+
+Wir nutzen jetzt `case_when()`, um die Parteinamen klein zu schreiben. Da wir das nicht dauerhaft behalten wollen, speichern wir den Datensatz als "test" ab.
+
+```{r}
+#| echo: true
+
+test <- bt %>% 
+  mutate(partei = case_when(
+    partei == "LINKE"   ~ "linke", # beachten Sie das doppelte Gleichzeichen
+    partei == "GRUENE"  ~ "gruene",
+    partei == "SPD"     ~ "spd",
+    partei == "FDP"     ~ "fdp",
+    partei == "CDU/CSU" ~ "cdu/csu",
+    partei == "AFD"     ~ "afd"))
+
+rm(test) # rm steht für remove
+
+```
+
+## Variablen umbenennen
+
+```{r}
+#| echo: true
+
+bt <- bt %>% 
+  rename(gender = geschlecht) %>%  # neuer Name = alter Name
+  mutate(gndr = gender)           # fügt eine neue Spalte mit neuem Namen hinzu
+
+```
+
+## Fehlende Werte anzeigen lassen
+
+```{r}
+#| echo: true
+
+table(bt$gender, useNA = "ifany")
+
+```
+
+## Zahlen in Missings umwandeln mit `ifelse()`
+
+```{r}
+#| echo: true
+
+test <- bt %>% 
+  mutate(gender = ifelse(gender == -999, NA, gender))
+
+```
+
+Der Befehl sagt, wenn [gender]{.alert} einen bestimmten Wert annimmt ([-999]{.alert}), wandele diese Wert in einen fehlenden Wert ([NA]{.alert}) um, falls die Variable einen anderen Wert hat, behalte den Originalwert ([gender]{.alert}) bei.
+
+## Zahlen in Missings umwandeln mit `case_when()`
+
+```{r}
+#| echo: true
+
+bt <- bt %>% 
+  mutate(gender = case_when(
+    gender == 0 ~ "m",
+    gender == 1 ~ "w"))
+
+```
+
+:::{.callout-warning title="Warnung"}
+
+Wir nutzen hier, dass alle Werte einer Variable, denen mit `case_when()` **kein neuer Wert zugewiesen wird**, automatisch in `NA` umgewandelt werden. Vergessen Sie also ein Faktorenlevel bei der Umbenennung, wird dieses zu einem fehlenden Wert!
+
+:::
+
+## Fehlende Werte in `ggplot()`
+
+```{r}
+#| echo: true
+#| out-width: 50%
+
+ggplot(data = bt, aes(x = gender))+
+  geom_bar()+
+  labs(x = NULL)+
+  theme(axis.text = element_text(size = 14))
+
+```
+
+:::{.callout-important title="Wichtig"}
+
+Fehlende Werte werden als eigene Kategorie in Grafiken dargestellt. Falls wir das nicht wollen, müssen wir es R mitteilen.
+
+:::
+
+## Fehlende Werte in `ggplot()` vorab filtern
+
+```{r}
+#| echo: true
+#| out-width: 50%
+#| code-line-numbers: "2"
+
+bt %>% 
+  filter(!is.na(gender)) %>% # gender ist nicht NA
+ggplot(aes(x = gender))+
+  geom_bar()
+
+```
+
+Der Befehl `is.na()` identifiziert Zeilen mit [NA]{.alert}. Wollen wir sie ausschließen, müssen wir R sagen, dass nur Zeilen beachtet werden, die **keine fehlende Werte** sind: `!is.na()`.
+
+## Eine neue Variable erstellen
+
+Statt des Geburtsjahrs wollen wir im Datensatz `bt` das Alter verwenden. Erstellen Sie eine **neue Spalte**, die diese Information enthält und ermitteln Sie in einem zweiten Schritt das Durchschnittsalter der Abgeordneten.
+
+## Eine neue Variable erstellen
+
+```{r}
+#| echo: true
+
+bt <- bt %>% 
+ mutate(alter = 2021-geburtsjahr)
+
+mean(bt$alter)
+
+```
+
+Die Abgeordneten sind im Durchschnitt `r round(mean(bt$alter),1)` Jahre alt.
+
+## Alles in einer Kette mit `%>%` 
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+#| eval: false
+
+bt <- bt_comp %>% 
+  filter(!partei %in% parteiliste) %>% 
+  rename(gender = geschlecht) %>% 
+  mutate(
+    partei = case_match(partei, 
+        c("CDU", "CSU") ~ "CDU/CSU",
+        "DIE LINKE"     ~ "LINKE",
+        .default = partei)) %>% 
+  mutate(alter = 2021-geburtsjahr) %>% 
+  mutate(gender = case_when(
+    gender == 0 ~ "m",
+    gender == 1 ~ "w"))
+
+```
+
+:::
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+
+bt <- bt_comp %>% 
+  filter(!partei %in% parteiliste) %>% 
+  rename(gender = geschlecht) %>% 
+  mutate(
+    partei = case_match(partei,
+        c("CDU", "CSU") ~ "CDU/CSU",
+        "DIE LINKE"     ~ "LINKE",
+        .default = partei),
+    alter = 2021-geburtsjahr,
+    gender = case_when(
+      gender == 0 ~ "m",
+      gender == 1 ~ "w"))
+
+```
+
+:::
+::::
+
+## Von Individuen zu Gruppen
+
+::: {.callout-warning title="Warnung"}
+
+In den nächsten Schritten speichern wir den Datensatz nicht ab!
+
+:::
+
+```{r}
+#| echo: true
+
+bt %>% 
+  group_by(partei) %>% 
+  tally() # zählt, wie viele Fälle die Auspragungen des Faktors "partei" haben.
+
+```
+
+## Von Individuen zu Gruppen
+
+Äquivalent zu `group_by()` und `tally()`.
+
+```{r}
+#| echo: true
+#| eval: false
+
+bt %>% group_by(partei) %>% # lieber nicht in eine Zeile (ich spare Platz)
+  summarise(n = n()) # das erste "n" ist der neue Spaltenname, nicht sinnvoll!
+
+```
+
+Besser:
+```{r}
+#| echo: true
+
+bt %>% group_by(partei) %>% 
+  summarise(obs_per_party = n())
+
+```
+
+## Durchschnitt pro Gruppe
+
+```{r}
+#| echo: true
+#| code-line-numbers: "3"
+
+bt %>% 
+  group_by(partei) %>%
+  summarise(mean_alter = mean(alter, na.rm=TRUE))
+
+```
+
+::: {.callout-important title="Wichtig!"}
+
+Gewöhnen Sie sich an, im Befehl `mean()` immer `na.rm=TRUE` hinzuzufügen.^[`NA` sind fehlende Werte und der Befehl sagt, dass sie entfernt werden sollen.] Sobald fehlende Werte in der Spalte vorhanden sind, funktioniert der Befehl nicht mehr.
+
+:::
+
+## Session Info
+
+```{r}
+
+sessionInfo()
+
+```
