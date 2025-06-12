@@ -4,8 +4,6 @@ subtitle: Funktionen II
 format: clean-revealjs
 highlight-style: tango
 auto-stretch: false
-execute:
-  echo: true
 author:
   - name: Armin Schäfer
     orcid: 0000-0002-2538-0092
@@ -13,10 +11,9 @@ author:
 center: true
 standalone: true
 embed-resources: true
-from: markdown+emoji
 footer: "Datenvisualisierung"
 logo: ../../../logo_polwi.jpg
-date: 12/20/2024
+date: 06/26/2025
 date-format: DD.MM.YYYY
 ---
 
@@ -33,25 +30,33 @@ ces <- read_csv(here("data", "ces_usa.csv"))
 
 ```
 
-## Bisher definierte Funktionen
+## Hinweis zum Einstieg
+
+::: {.callout-tip title="Tipp"}
+
+Falls Sie ein neues Skript erstellen, ist es sinnvoll, alle Funktionen *an den Anfang* zu stellen. Generell gilt: Wenn Sie den Cursor auf die Funktion richten und F2 drücken, landen Sie automatisch dort, wo sie definiert wurde.
+
+:::
+
+## Bestehende Funktionen anwenden
+
+Vordefinierte Funktionen -- die wir nicht ausdrücklich mit `name <- function...` definieren -- nennt man [anonyme]{.alert} oder [Lambda]{.alert}-Funktionen. Um sie in `mutate(across...)` verändern zu können, müssen wir sie im Code **explizit als Funktion** benennen:^[Es gibt auch andere Möglichkeiten, aber das ist die empfohlene Vorgehensweise.]
 
 ```{r}
+#| echo: true
 
-# Mittelwert
-mtw <- function(var1){
-  mtwx <- mean(var1, na.rm=TRUE)
-  }
+ces_agg <- ces %>% 
+  summarise(across(ends_with("_rs"), function(x) mean(x, na.rm = TRUE)))
 
-# Skalieren
-rescale01 <- function(var1){
-    (var1 - min(var1, na.rm = TRUE)) / 
-    (max(var1, na.rm = TRUE) - min(var1, na.rm = TRUE))
-}
+```
 
-# z-Transformation
-z_score <- function(x) {
-  (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
-}
+Statt des Worts `function` können wir auch `\(x)` verwenden -- das ist aber vielleicht weniger leicht nachzuvollziehen.
+
+```{r}
+#| echo: true
+
+ces_agg <- ces %>% 
+  summarise(across(ends_with("_rs"), \(x) mean(x, na.rm=TRUE)))
 
 ```
 
@@ -60,8 +65,9 @@ z_score <- function(x) {
 In den Spalten [CC22_330a]{.tip}, [CC22_330b]{.tip} und [CC22_330c]{.tip} sind die fehlenden Werte als -999, -998 und -997 angegeben -- das kommt bei Umfragen häufiger vor.^[In diesem Fall habe ich diese Werte zu Übungszwecken erzeugt.] Geben Sie in die Konsole `table(ces$CC22_330a, useNA = "ifany")` ein. Wir definieren eine Funktion, mit der diese Zahlen in `NA` umgewandelt werden.
 
 ```{r}
+#| echo: true
 
-missings <- c(-997, -998, -999)
+missings <- c(997, 998, 999)
 
 fix_na <- function(x) {
   if_else(x %in% missings, NA, x) 
@@ -92,6 +98,7 @@ knitr::include_graphics(here("pics", "ces_codebook.png"))
 ## Variablenlevel umbenennen
 
 ```{r}
+#| echo: true
 
 fct_rename <- function(x) {
   x = case_when(
@@ -113,7 +120,7 @@ tmp <- ces %>% # nicht unseren Datensatz verändern!
 
 ::: {style="font-size: 0.8em"}
 
-Was müssen Sie ändern, um diese Umkodierung auf **alle acht Variablen** anzuwenden, die dieselbe Art von Einschätzungen abfragen (sie beginnen alle mit "CC22_340").
+Was müssen Sie ändern, um diese Umkodierung auf **alle acht Variablen** anzuwenden, die dieselbe Art von Einschätzungen abfragen (sie beginnen alle mit "CC22_340")?
 
 :::
 
@@ -122,6 +129,7 @@ Was müssen Sie ändern, um diese Umkodierung auf **alle acht Variablen** anzuwe
 Label mit der erstellten Funktion `fct_rename` vergeben.
 
 ```{r}
+#| echo: true
 
 ces <- ces %>% 
   mutate(across(starts_with("CC22_340"), fct_rename, 
@@ -132,6 +140,7 @@ ces <- ces %>%
 Jetzt mit der [anonymen]{.alert} (nicht von uns definierten) Funktion `fct_relevel()` ordnen.
 
 ```{r}
+#| echo: true
 
 ordered_levels <- c("very liberal", "liberal", "somewhat liberal", 
                    "middle of the road", "somewhat conservative", 
@@ -167,6 +176,8 @@ Wir ersetzen als erstes den Datensatz durch [data]{.tip}.
 
 ```{r}
 #| eval: false
+#| echo: true
+
 
 our_ggplot <- function(data){
   
@@ -193,6 +204,9 @@ Nun ersetzen wir nicht nur den Datensatz durch [data]{.tip}, sondern auch die Va
 
 ```{r}
 #| eval: false
+#| echo: true
+
+
 our_ggplot <- function(data, var1, var2){
   
   data %>% 
@@ -211,7 +225,7 @@ our_ggplot(ces, CC22_340a_fac, CC22_340g_fac)
 
 ```
 
-Funktioniert nicht :disappointed:.
+Funktioniert nicht...
 
 ## Wonach sucht R in diesem Fall?
 
@@ -243,6 +257,8 @@ Setzen Sie in diese Funktion die Variable [CC22_340d_fac]{.tip} ein. Ändert sic
 
 ```{r}
 #| eval: false
+#| echo: true
+
 
 our_ggplot <- function(data, var1, var2, ...){
   
@@ -491,6 +507,7 @@ knitr::include_graphics(here("pics", "elements_themes.png"))
 #| out-width: 70%
 #| fig-align: center
 #| code-line-numbers: "6"
+#| echo: true
 
 p1 <- ggplot(data = ces, aes(x = age))+
   geom_boxplot()+
@@ -504,6 +521,7 @@ p1 <- ggplot(data = ces, aes(x = age))+
 #| out-width: 70%
 #| fig-align: center
 #| code-line-numbers: "6"
+#| echo: true
 
 p1 +
   theme(axis.title = element_text(face = "bold", size = 16))
@@ -516,6 +534,7 @@ p1 +
 #| out-width: 70%
 #| fig-align: center
 #| code-line-numbers: "2,3"
+#| echo: true
 
 p1 +
   theme(axis.title = element_text(face = "bold", size = 16),
@@ -529,6 +548,7 @@ p1 +
 #| out-width: 70%
 #| fig-align: center
 #| code-line-numbers: "4"
+#| echo: true
 
 p1 +
   theme(axis.title = element_text(face = "bold", size = 16),
@@ -543,6 +563,7 @@ p1 +
 #| out-width: 70%
 #| fig-align: center
 #| code-line-numbers: "2"
+#| echo: true
 
 p1 +
   theme(panel.grid = element_line(color = "pink")) # bitte nicht
@@ -555,6 +576,7 @@ p1 +
 #| out-width: 70%
 #| fig-align: center
 #| code-line-numbers: "2,3,4"
+#| echo: true
 
 p1 +
   theme_light()+
@@ -568,6 +590,7 @@ Weitere Möglichkeiten sind [hier](https://ggplot2.tidyverse.org/reference/theme
 ## Ein `theme` als Funktion
 
 ```{r}
+#| echo: true
 
 my_theme <- function(...) theme(
   plot.title = element_text(color = "black", 
@@ -587,6 +610,8 @@ my_theme <- function(...) theme(
 ```{r}
 #| fig-width: 6
 #| fig-height: 4
+#| echo: true
+
 
 ggplot(data = ces, aes(x = age))+
   geom_boxplot()+
@@ -600,6 +625,7 @@ ggplot(data = ces, aes(x = age))+
 ```{r}
 #| fig-width: 6
 #| fig-height: 4
+#| echo: true
 
 ggplot(data = ces, aes(x = age))+
   geom_boxplot()+
@@ -608,8 +634,6 @@ ggplot(data = ces, aes(x = age))+
   my_theme()
 
 ```
-
-## {background-video="xmas_tree.mp4" background-size="contain"}
 
 ## Session Info
 
