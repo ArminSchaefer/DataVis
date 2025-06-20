@@ -30,6 +30,10 @@ ces <- read_csv(here("data", "ces_usa.csv"))
 
 ```
 
+## Kursmaterialien
+
+Alle Unterlagen einschließlich des Codes, mit dem die Folien erzeugt worden sind, finden Sie auf folgender Seite: [https://github.com/ArminSchaefer/DataVis](https://github.com/ArminSchaefer/DataVis)
+
 ## Hinweis zum Einstieg
 
 ::: {.callout-tip title="Tipp"}
