@@ -137,7 +137,7 @@ ces <- ces %>%
 
 ```
 
-Jetzt mit der [anonymen]{.alert} (nicht von uns definierten) Funktion `fct_relevel()` ordnen.
+Jetzt mit der [anonymen]{.alert} Funktion `fct_relevel()` ordnen.
 
 ```{r}
 #| echo: true
@@ -151,12 +151,13 @@ ces <- ces %>%
 
 ```
 
-# Grafiken in einer Funktion erzeugen
+# Ganze Grafiken in einer Funktion erzeugen
 
 ## Unsere Grafik (in nicht perfekter Darstellung)
 
 ```{r}
-#| out-width: 60%
+#| echo: true
+#| eval: false
 
 ces %>% 
   filter(!is.na(CC22_340a_fac), !is.na(CC22_340g_fac)) %>% 
@@ -172,12 +173,11 @@ ces %>%
 
 ## Eine ggplot-Funktion
 
-Wir ersetzen als erstes den Datensatz durch [data]{.tip}.
+Wir kopieren den Code und ersetzen als erstes den Datensatz durch [data]{.tip}.
 
 ```{r}
 #| eval: false
 #| echo: true
-
 
 our_ggplot <- function(data){
   
@@ -210,8 +210,8 @@ Nun ersetzen wir nicht nur den Datensatz durch [data]{.tip}, sondern auch die Va
 our_ggplot <- function(data, var1, var2){
   
   data %>% 
-  filter(!is.na( var1 ), !is.na( var2 )) %>% 
-  ggplot(aes(x = var1, fill = var2 )) +
+  filter(!is.na( var1 ), !is.na( var2 )) %>%  # ersetzt
+  ggplot(aes(x = var1, fill = var2 )) +       # ersetzt
   geom_bar(position = "fill") +
   scale_fill_viridis_d(direction = -1) +  
   labs(x = "Ideological self-placement",
@@ -237,9 +237,9 @@ In der `tidyverse`-Variante von R können wir Befehle miteinander verbinden. Wir
 
 ## Der "Tunnel" {{ }}
 
-In einer Funktion sucht R nach Spalten, die den genannten Namen (z.B. "var1") haben. Aber eine Spalte mit diesem Namen gibt es im Datensatz [ces]{.tip} nicht -- deshalb bekommen wir eine Fehlermeldung.
+In einer Funktion durchsucht R den Datensatz nach Spalten, die den genannten Namen (z.B. "var1") haben. Aber eine Spalte mit diesem Namen gibt es im Datensatz [ces]{.tip} nicht -- deshalb bekommen wir eine Fehlermeldung.
 
-Wir müssen R mitteilen, dass es sich bei "var1" und "var2" um **Platzhalter** handelt, die selbst **keine Variablennamen sind**. Dies geschieht mit einer doppelten geschweiften Klammer: {{ }}.^[Bildlich können Sie sich das wie einen Tunnel oder ein Fernrohr vorstellen, an deren Ende die Variablen stehen, die wir verwenden möchten.]
+Wir müssen R mitteilen, dass es sich bei "var1" und "var2" um **Platzhalter** handelt, die selbst **keine Variablennamen sind**. Dies geschieht mit einer doppelten geschweiften Klammer: {{ }}.^[Bildlich können Sie sich das wie den Eingang zu einem Tunnel vorstellen, an dessen Ende die Variablen stehen, die wir verwenden möchten.]
 
 ## Eine Funktion mit {{ }}
 
@@ -307,6 +307,7 @@ our_ggplot <- function(data, var1, var2, ...){
 
 ```{r}
 #| out-width: 80%
+#| echo: true
 
 library(patchwork) # oben ins Skript bei p_load einfügen!
 
@@ -321,6 +322,7 @@ p1 + p2
 
 ```{r}
 #| out-width: 70%
+#| echo: true
 
 p2 <- p2 +
   theme(axis.title.y = element_blank(), 
@@ -337,6 +339,7 @@ p1 + p2+
 Wir wollen nun den Zusammenhang von Bildungsabschlüssen und Wahlverhalten untersuchen. Dazu müssen erst den Datensatz vorbereiten.
 
 ```{r}
+#| echo: true
 
 ces <- ces %>% 
   mutate(biden = ifelse(presvote20 == "Biden", 1, 0),
@@ -378,6 +381,7 @@ ces %>%
 
 ```{r}
 #| eval: false
+#| echo: true
 
 ces %>% 
   filter(!is.na(edu)) %>% 
@@ -400,6 +404,7 @@ Erstellen Sie nun eine Funktion, damit Sie auch die Werte für Trump darstellen 
 ## Als Funktion
 
 ```{r}
+#| echo: true
 
 fct_barplot <- function(var1, ...){
   ces %>% 
@@ -420,6 +425,7 @@ fct_barplot <- function(var1, ...){
 
 ```{r}
 #| fig-width: 8
+#| echo: true
 
 fct_barplot(biden, title = "Wahlergebnis Joe Bilden nach Bildungsgruppen")
 
@@ -429,6 +435,8 @@ fct_barplot(biden, title = "Wahlergebnis Joe Bilden nach Bildungsgruppen")
 
 ```{r}
 #| fig-width: 8
+#| echo: true
+
 
 fct_barplot(trump, title = "Wahlergebnis Donald Trump nach Bildungsgruppen")+
   scale_y_continuous(labels = scales::percent)+
@@ -440,6 +448,7 @@ fct_barplot(trump, title = "Wahlergebnis Donald Trump nach Bildungsgruppen")+
 
 ```{r}
 #| fig-width: 8
+#| echo: true
 
 fct_barplot(trump, title = "Wahlergebnis Donald Trump nach Bildungsgruppen")+
   scale_y_continuous(labels = scales::percent)+
@@ -560,28 +569,14 @@ p1 +
 ## Theme: Grid-Linien anpassen
 
 ```{r}
-#| out-width: 70%
-#| fig-align: center
-#| code-line-numbers: "2"
-#| echo: true
-
-p1 +
-  theme(panel.grid = element_line(color = "pink")) # bitte nicht
-
-```
-
-## Theme: Grid-Linien anpassen
-
-```{r}
-#| out-width: 70%
+#| out-width: 60%
 #| fig-align: center
 #| code-line-numbers: "2,3,4"
 #| echo: true
 
 p1 +
   theme_light()+
-  theme(panel.grid = element_line(color = "pink"),
-        panel.grid.minor = element_blank()) # Kleinere Hilfslinien werden weglassen.
+  theme(panel.grid.minor = element_blank()) # Kleinere Hilfslinien werden weglassen.
 
 ```
 

@@ -1,0 +1,171 @@
+---
+title: "Warum Variablen reskalieren?"
+author:
+  - name: Armin Schäfer
+    affiliation:
+      - id: jgu
+        name: Johannes Gutenberg University
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+format: 
+  html:
+    number-sections: true
+    code-fold: true
+    code-summary: "Show the code"
+    self-contained: true
+    toc: true
+highlight-style: tango
+execute:
+  warning: false
+  message: false
+lang: de
+---
+
+Als Beispiel für Funktionen haben wir uns am 12. Juni die Möglichkeit angeschaut, Variablenwerte so umzurechnen, dass sie von 0 bis 1 reichen (Reskalierung). Das ist technisch einfach umsetzbar, aber es ist vielleicht nicht sofort einsichtig, warum das nützlich sein könnte. Dieses Dokument erläutert dies. 
+
+Im ersten Schritt simulieren wir einen Datensatz, bei dem die abhänige Variable "Zufriedenheit mit der Demokratie" ist und von 0 bis 10 reicht ("satisfaction"), und es zwei unabhängige Variablen gibt -- das Einkommen von 500 bis 25.000 Euro pro Monat ("income") und das Alter von 18 bis 80 Jahren ("age").
+
+```{r}
+#| echo: true
+
+library(patchwork)
+library(modelsummary)
+library(tidyverse)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Sample size
+n <- 1000
+
+# Simulate independent variables
+income <- runif(n, min = 500, max = 25000)   # income in €
+age <- round(runif(n, min = 18, max = 80), 0)          # age in years
+
+# Rescale for generating the dependent variable (but not for regression yet)
+income_scaled <- (income - 500) / (25000 - 500)
+age_scaled <- (age - 18) / (80 - 18)
+
+# Coefficients (same effect size after scaling)
+beta_income <- 3.3
+beta_age    <- 2.7
+intercept   <- 2
+
+# Simulate satisfaction (0 to 10), add some noise
+satisfaction <- intercept + beta_income * income_scaled + beta_age * age_scaled + rnorm(n, mean = 0, sd = 1)
+
+# Clip satisfaction to stay within 0–10 range
+satisfaction <- pmin(pmax(satisfaction, 0), 10)
+
+# Combine into data frame
+df <- tibble(satisfaction, income, age)
+
+```
+
+Um einen Eindruck von den Daten zu erhalten, erstellen wir zwei Streudiagramme, eines für Einkommen und eines für Alter (siehe @fig-scatter). In beiden Fällen zeigt sich ein positiver Zusammenhang, der beim Einkommen etwas stärker als bei Alter ist (so ist es im Code festgelegt).
+
+```{r}
+#| echo: true
+#| message: false
+#| label: fig-scatter
+#| fig-cap: "Scatterplots der simulierten Daten"
+
+p1 <- ggplot(data = df, aes(x = income, y = satisfaction))+
+  geom_point(alpha = 0.3)+
+  geom_smooth(method = "lm")+
+  scale_y_continuous(limits = c(0, 10))+
+  theme_classic()
+
+
+p2 <- ggplot(data = df, aes(x = age, y = satisfaction))+
+  geom_point(alpha = 0.3)+
+  geom_smooth(method = "lm")+
+  scale_y_continuous(limits = c(0, 10))+
+  theme_classic()
+
+
+p1 + p2 + plot_layout(ncol = 2)
+
+```
+
+Im zweiten Schritt wird ein lineares Regressionsmodell geschätzt, dass beide unabhängige Variablen einschließt. @tbl-table1 enthält die Ergebnisse. Beide Variablen haben einen positiven und statistisch signifikaten Effekt auf die abhängige Variable. Doch was sagen die Koeffizienten aus und ist der Effekt des Alters stärker als der des Einkommens, weil 0,0401 > 0,0001???
+
+```{r}
+#| echo: true
+#| message: false
+#| label: tbl-table1
+#| tbl-cap: "Lineares Regressionsmodell mit unskalierten Daten"
+
+model1 <- lm(satisfaction ~ income + age, data = df)
+
+modelsummary(model1, stars=TRUE, gof_map = c("nobs", "r.squared"), fmt = 6)
+
+```
+
+Die Koeffizienten geben an, um wie viel sich die Demokratiezufriedenheit verändert, wenn die unabhängige Variable um eine Einheit steigt, während alle anderen Variablen konstant gehalten werden. Das bedeutet, dass ein Anstieg des Einkommens um **einen Euro** die Zufriedenheit mit der Demokratie um 0,0001 Einheiten erhöht, während ein Anstieg des Alters um **1 Jahr** die Zufriedenheit um 0,0401 Einheiten erhöht. Das Einkommen kann aber insgesamt um 24.500 Euro steigen, während das Alter nur um 62 Jahre steigen kann. Die Größe des Koeffizienten hängt also damit zusammen, wie die unabhängigen Variablen gemessen werden. Um dies zu verdeutlichen, erstellen wir zunächst eine neue Variable, die das Einkommen in Vielfachen von 1.000€ misst, und schätzen das Modell erneut. @tbl-table2 zeigt die Ergebnisse.
+
+Der Koeffizient des Einkommens ist nun 1.000 mal größer als im Ausgangsmodell, weil er angibt, um wie viel sich die Demokratiezufriedenheit verändert, wenn das Einkommen um **1.000 Euro** steigt. Der Koeffizient des Alters bleibt unverändert, weil er immer noch angibt, um wie viel sich die Demokratiezufriedenheit verändert, wenn das Alter um **1 Jahr** steigt. Betrachtet man nur das zweite Modell, könnte man denken, der Effekt des Einkommens ist viel größer als der des Alters.
+
+```{r}
+#| echo: true
+#| message: false
+#| label: tbl-table2
+#| tbl-cap: "Lineares Regressionsmodell mit unskalierten und umgerechnetem Einkommen"
+
+df <- df %>% 
+  mutate(income_1000 = income / 1000) # Einkommen in Tausend Euro
+
+
+models <- list(
+  "Ausgangsmodell"   = lm(satisfaction ~ income + age, data = df),
+  "Einkommmen/1000"  = lm(satisfaction ~ income_1000 + age, data = df)
+)
+
+modelsummary(models, stars=TRUE, gof_map = c("nobs", "r.squared"), fmt = 6,
+             coef_rename = c("income_1000" = "income"))
+
+
+```
+
+Es sollte deutlich geworden sein, dass die Skalierung der unabhängigen Variablen beeinflusst, wie groß die Koeffizienten sind, und dass die Koeffizienten nicht direkt miteinander verglichen werden können, wenn die Variablen unterschiedlich skaliert sind. Um diesem Problem zu begegnen, können wir alle unabängigen Variablen so umrechnen, dass sie von 0 bis 1 reichen. Dies ist eine Form der Reskalierung, die es ermöglicht, die Koeffizienten direkt miteinander zu vergleichen. Die Koeffizienten geben in diesem Fall die Veränderung der abhängigen Variable an, wenn die unabhängigen Variablen vom Minimum auf das Maximum steigen -- weil 0 nun das Minimum und 1 das Maximum ist.
+
+Aufbauend auf den Inhalten der letzten Sitzung folgt hier der Code, mit dem zunächst eine Funktion zu Reskalierung erstellt wird, mit der die beiden unabhängigen Variablen reskaliert werden.
+
+```{r}
+#| echo: true
+#| label: rescaling
+
+rescale01 <- function(var1){
+    (var1 - min(var1, na.rm = TRUE)) / 
+    (max(var1, na.rm = TRUE) - min(var1, na.rm = TRUE))
+}
+
+df <- df %>% 
+  mutate(across(c(income, age), rescale01, # Reskalierung der Variablen von 0 bis 1
+         .names = "{.col}_rs"))
+
+```
+
+Im letzten Schritt schätzen wir das Regressionsmodell erneut, diesmal mit den reskalierten Variablen. @tbl-table3 stellt die beidem Modelle nebeneinander dar. Im zweiten Modell können wir die Koeffizienten direkt miteinander vergleichen. Der Effekt des Einkommens ist 3,33 und der des Alters 2,68. Das bedeutet, dass ein Anstieg des Einkommens von 0 auf 1 (also von 500€ auf 25000€) die Zufriedenheit mit der Demokratie um 3,3 Punkte auf einer Skala von 0 bis 10 steigert, während ein Anstieg des Alters von 0 auf 1 (also von 18 auf 80 Jahre) die Zufriedenheit um 2,7 Punkte erhöht. Damit haben Sie ein Anwendungsbeispiel kennengelernt, bei dem die Reskalierung von Variablen sinnvoll sein kann.
+
+```{r}
+#| echo: true
+#| message: false
+#| label: tbl-table3
+#| tbl-cap: "Lineares Regressionsmodell mit unskalierten und skalierten Variablen"
+
+
+models <- list(
+  "Ausgangsmodell"   = lm(satisfaction ~ income + age, data = df),
+  "Skaliert"         = lm(satisfaction ~ income_rs + age_rs, data = df)
+)
+
+modelsummary(models, stars=TRUE, gof_map = c("nobs", "r.squared"), fmt = 6,
+             coef_rename = c("income_rs" = "income", 
+                             "age_rs" = "age"))
+
+
+```
+
+```
+
