@@ -6,7 +6,7 @@ execute:
   echo: true
   message: false
   warning: false
-date: 06/12/2025
+date: 06/26/2025
 date-format: DD.MM.YYYY
 ---
 
