@@ -65,7 +65,7 @@ ces <- ces %>%
   
   # Reorder levels in columns that end with '_fac' 
   # based on 'ordered_levels' defined above
-  mutate(across(ends_with("_fac"), \(x) fct_relevel(x, ordered_levels))) %>% 
+  mutate(across(ends_with("_fac"), ~fct_relevel(., ordered_levels))) %>% 
   
   # Filter out rows where either 'ideo_ego_fac' or 'ideo_scotus_fac' is NA
   filter(!is.na(ideo_ego_fac), !is.na(ideo_scotus_fac)) %>% 
