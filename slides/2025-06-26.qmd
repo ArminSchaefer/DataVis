@@ -24,9 +24,9 @@ date-format: DD.MM.YYYY
 #| warning: false
 
 if(!require("pacman")) {install.packages("pacman");library(pacman)}
-p_load(here, scales, readxl, gt, tidyverse)
+p_load(here, scales, rio, gt, tidyverse)
 
-ces <- read_csv(here("data", "ces_usa.csv"))
+ces <- import(here("data", "ces_usa.csv"))
 
 ```
 
@@ -44,23 +44,13 @@ Falls Sie ein neues Skript erstellen, ist es sinnvoll, alle Funktionen *an den A
 
 ## Bestehende Funktionen anwenden
 
-Vordefinierte Funktionen -- die wir nicht ausdrücklich mit `name <- function...` definieren -- nennt man [anonyme]{.alert} oder [Lambda]{.alert}-Funktionen. Um sie in `mutate(across...)` verändern zu können, müssen wir sie im Code **explizit als Funktion** benennen:^[Es gibt auch andere Möglichkeiten, aber das ist die empfohlene Vorgehensweise.]
+Vordefinierte Funktionen -- die wir nicht ausdrücklich mit `name <- function...` definieren -- nennt man [anonyme]{.alert} oder [Lambda]{.alert}-Funktionen. Um sie in `mutate(across...)` nutzen zu können, verwenden wir folgende Syntax:^[Was ich vor zwei Wochen gezeigt hatte, funktioniert auch, ist aber nicht mehr der neueste Stand.]
 
 ```{r}
 #| echo: true
 
 ces_agg <- ces %>% 
-  summarise(across(ends_with("_rs"), function(x) mean(x, na.rm = TRUE)))
-
-```
-
-Statt des Worts `function` können wir auch `\(x)` verwenden -- das ist aber vielleicht weniger leicht nachzuvollziehen.
-
-```{r}
-#| echo: true
-
-ces_agg <- ces %>% 
-  summarise(across(ends_with("_rs"), \(x) mean(x, na.rm=TRUE)))
+  summarise(across(ends_with("_rs"), ~mean(x, na.rm = TRUE))) # neue Syntax
 
 ```
 
@@ -231,17 +221,9 @@ our_ggplot(ces, CC22_340a_fac, CC22_340g_fac)
 
 Funktioniert nicht...
 
-## Wonach sucht R in diesem Fall?
-
-In der `tidyverse`-Variante von R können wir Befehle miteinander verbinden. Wir rufen zunächsten den Datensatz auf und fügen dann weitere Befehle an. Der Vorteil ist, dass wir den Datensatznamen nicht immer wieder einfügen müssen, was v.a. bei längeren Befehlsketten hilfreich ist.
-
-`mean(ces$age, na.rm = TRUE)` vs. 
-
-`ces %>% summarise(age = mean(age, na.rm = TRUE))`.
-
 ## Der "Tunnel" {{ }}
 
-In einer Funktion durchsucht R den Datensatz nach Spalten, die den genannten Namen (z.B. "var1") haben. Aber eine Spalte mit diesem Namen gibt es im Datensatz [ces]{.tip} nicht -- deshalb bekommen wir eine Fehlermeldung.
+In einer Funktion durchsucht `R` den Datensatz nach Spalten, die den genannten Namen (z.B. "var1") haben. Aber eine Spalte mit diesem Namen gibt es im Datensatz [ces]{.tip} nicht -- deshalb bekommen wir eine Fehlermeldung.
 
 Wir müssen R mitteilen, dass es sich bei "var1" und "var2" um **Platzhalter** handelt, die selbst **keine Variablennamen sind**. Dies geschieht mit einer doppelten geschweiften Klammer: {{ }}.^[Bildlich können Sie sich das wie den Eingang zu einem Tunnel vorstellen, an dessen Ende die Variablen stehen, die wir verwenden möchten.]
 
@@ -262,7 +244,6 @@ Setzen Sie in diese Funktion die Variable [CC22_340d_fac]{.tip} ein. Ändert sic
 ```{r}
 #| eval: false
 #| echo: true
-
 
 our_ggplot <- function(data, var1, var2, ...){
   
@@ -633,6 +614,18 @@ ggplot(data = ces, aes(x = age))+
   my_theme()
 
 ```
+
+## Evaluation
+
+```{r}
+#| out-width: "40%"
+#| fig-align: center
+
+knitr::include_graphics(here("pics", "qr_eval.png"))
+
+```
+
+Losung: 472TN
 
 ## Session Info
 
