@@ -1,0 +1,224 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Trends im Zeitverlauf
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 07/03/2025
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, scales, rio, gt, tidyverse)
+
+ces <- import(here("data", "ces_usa.csv"))
+
+```
+
+# Themes anpassen
+
+## Überblick
+
+```{r}
+#| echo: false
+
+p1 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Voreinstellung", x = NULL)
+
+p2 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Classic", x = NULL)+
+  theme_classic()
+
+p3 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Black and white", x = NULL)+
+  theme_bw()
+
+p4 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Dark", x = NULL)+
+  theme_dark()
+
+p5 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Light", x = NULL)+
+  theme_light()
+
+p6 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Void", x = NULL)+
+  theme_void()
+
+(p1 + p2 + p3) / (p4 + p5 + p6)
+
+```
+
+## Elemente von `themes()`
+
+```{r}
+#| echo: false
+#| out-width: 65%
+#| fig-align: left
+
+knitr::include_graphics(here("pics", "elements_themes.png"))
+
+```
+
+[Quelle: [Henry Wang](https://henrywang.nl/ggplot2-theme-elements-demonstration/)]{.links}
+
+## Theme: Ausgangspunkt
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "6"
+#| echo: true
+
+p1 <- ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(x = "Alter in Jahren")
+
+```
+
+## Theme: Achsen-Beschriftung anpassen
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "6"
+#| echo: true
+
+p1 +
+  theme(axis.title = element_text(face = "bold", size = 16))
+
+```
+
+## Theme: Achsen-Beschriftung anpassen
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "2,3"
+#| echo: true
+
+p1 +
+  theme(axis.title = element_text(face = "bold", size = 16),
+        axis.text  = element_text(size = 16))
+
+```
+
+## Theme: Titel anpassen
+
+```{r}
+#| out-width: 70%
+#| fig-align: center
+#| code-line-numbers: "4"
+#| echo: true
+
+p1 +
+  theme(axis.title = element_text(face = "bold", size = 16),
+        axis.text  = element_text(size = 16),
+        plot.title = element_text(size = 20))
+
+```
+
+## Theme: Grid-Linien anpassen
+
+```{r}
+#| out-width: 60%
+#| fig-align: center
+#| code-line-numbers: "2,3,4"
+#| echo: true
+
+p1 +
+  theme_light()+
+  theme(panel.grid.minor = element_blank()) # Kleinere Hilfslinien werden weglassen.
+
+```
+
+Weitere Möglichkeiten sind [hier](https://ggplot2.tidyverse.org/reference/theme.html) einsehbar.
+
+## Ein `theme` als Funktion
+
+```{r}
+#| echo: true
+
+my_theme <- function(...) theme(
+  plot.title = element_text(color = "black", 
+                            size = 14,
+                            face = "bold"),
+  axis.text = element_text(color = "black", 
+                           size = 12),
+  axis.title = element_text(color = "black",
+                            face = "bold",
+                            size = 12),
+  panel.grid.minor = element_blank())
+
+```
+
+## Verwendung
+
+```{r}
+#| fig-width: 6
+#| fig-height: 4
+#| echo: true
+
+
+ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Altersverteilung", x = "Alter in Jahren")+
+  my_theme()
+
+```
+
+## Kombination mit bestehenden Themes
+
+```{r}
+#| fig-width: 6
+#| fig-height: 4
+#| echo: true
+
+ggplot(data = ces, aes(x = age))+
+  geom_boxplot()+
+  labs(title = "Altersverteilung", x = "Alter in Jahren")+
+  theme_light()+
+  my_theme()
+
+```
+
+## Evaluation
+
+```{r}
+#| out-width: "40%"
+#| fig-align: center
+
+knitr::include_graphics(here("pics", "qr_eval.png"))
+
+```
+
+Losung: 472TN
+
+## Session Info
+
+```{r}
+
+sessionInfo()
+
+```

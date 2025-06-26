@@ -107,8 +107,8 @@ fct_rename <- function(x) {
 }
 
 tmp <- ces %>% # nicht unseren Datensatz verändern!
-  mutate(across(c(CC22_340a, CC22_340g), fct_rename, 
-                .names = "{.col}_fac"))
+  mutate(across(c(CC22_340a, CC22_340g), fct_rename, # ohne ~
+                .names = "{.col}_fac"))  # neue Spalten mit der Endung "_fac"
 
 ```
 
@@ -133,6 +133,8 @@ ces <- ces %>%
 
 Jetzt mit der [anonymen]{.alert} Funktion `fct_relevel()` ordnen.
 
+## Umbenennen, dann ordnen
+
 ```{r}
 #| echo: true
 
@@ -141,9 +143,11 @@ ordered_levels <- c("very liberal", "liberal", "somewhat liberal",
                    "conservative", "very conservative")
 
 ces <- ces %>% 
-  mutate(across(ends_with("_fac"), function(x) fct_relevel(x, ordered_levels))) 
+  mutate(across(ends_with("_fac"), ~fct_relevel(., ordered_levels))) 
 
 ```
+
+Der `.` in `~fct_relevel(.)` ist notwendig, damit die Funktion auf alle Spalten angewendet wird, die vorab ausgewählt wurden.
 
 # Ganze Grafiken in einer Funktion erzeugen
 
@@ -439,179 +443,6 @@ fct_barplot(trump, title = "Wahlergebnis Donald Trump nach Bildungsgruppen")+
   scale_y_continuous(labels = scales::percent)+
   theme_light()+
   theme(plot.title = element_text(face = "bold"))
-
-```
-
-# Themes anpassen
-
-## Überblick
-
-```{r}
-#| echo: false
-
-p1 <- ggplot(data = ces, aes(x = age))+
-  geom_boxplot()+
-  labs(title = "Voreinstellung", x = NULL)
-
-p2 <- ggplot(data = ces, aes(x = age))+
-  geom_boxplot()+
-  labs(title = "Classic", x = NULL)+
-  theme_classic()
-
-p3 <- ggplot(data = ces, aes(x = age))+
-  geom_boxplot()+
-  labs(title = "Black and white", x = NULL)+
-  theme_bw()
-
-p4 <- ggplot(data = ces, aes(x = age))+
-  geom_boxplot()+
-  labs(title = "Dark", x = NULL)+
-  theme_dark()
-
-p5 <- ggplot(data = ces, aes(x = age))+
-  geom_boxplot()+
-  labs(title = "Light", x = NULL)+
-  theme_light()
-
-p6 <- ggplot(data = ces, aes(x = age))+
-  geom_boxplot()+
-  labs(title = "Void", x = NULL)+
-  theme_void()
-
-(p1 + p2 + p3) / (p4 + p5 + p6)
-
-```
-
-## Elemente von `themes()`
-
-```{r}
-#| echo: false
-#| out-width: 65%
-#| fig-align: left
-
-knitr::include_graphics(here("pics", "elements_themes.png"))
-
-```
-
-[Quelle: [Henry Wang](https://henrywang.nl/ggplot2-theme-elements-demonstration/)]{.links}
-
-## Theme: Ausgangspunkt
-
-```{r}
-#| out-width: 70%
-#| fig-align: center
-#| code-line-numbers: "6"
-#| echo: true
-
-p1 <- ggplot(data = ces, aes(x = age))+
-  geom_boxplot()+
-  labs(x = "Alter in Jahren")
-
-```
-
-## Theme: Achsen-Beschriftung anpassen
-
-```{r}
-#| out-width: 70%
-#| fig-align: center
-#| code-line-numbers: "6"
-#| echo: true
-
-p1 +
-  theme(axis.title = element_text(face = "bold", size = 16))
-
-```
-
-## Theme: Achsen-Beschriftung anpassen
-
-```{r}
-#| out-width: 70%
-#| fig-align: center
-#| code-line-numbers: "2,3"
-#| echo: true
-
-p1 +
-  theme(axis.title = element_text(face = "bold", size = 16),
-        axis.text  = element_text(size = 16))
-
-```
-
-## Theme: Titel anpassen
-
-```{r}
-#| out-width: 70%
-#| fig-align: center
-#| code-line-numbers: "4"
-#| echo: true
-
-p1 +
-  theme(axis.title = element_text(face = "bold", size = 16),
-        axis.text  = element_text(size = 16),
-        plot.title = element_text(size = 20))
-
-```
-
-## Theme: Grid-Linien anpassen
-
-```{r}
-#| out-width: 60%
-#| fig-align: center
-#| code-line-numbers: "2,3,4"
-#| echo: true
-
-p1 +
-  theme_light()+
-  theme(panel.grid.minor = element_blank()) # Kleinere Hilfslinien werden weglassen.
-
-```
-
-Weitere Möglichkeiten sind [hier](https://ggplot2.tidyverse.org/reference/theme.html) einsehbar.
-
-## Ein `theme` als Funktion
-
-```{r}
-#| echo: true
-
-my_theme <- function(...) theme(
-  plot.title = element_text(color = "black", 
-                            size = 14,
-                            face = "bold"),
-  axis.text = element_text(color = "black", 
-                           size = 12),
-  axis.title = element_text(color = "black",
-                            face = "bold",
-                            size = 12),
-  panel.grid.minor = element_blank())
-
-```
-
-## Verwendung
-
-```{r}
-#| fig-width: 6
-#| fig-height: 4
-#| echo: true
-
-
-ggplot(data = ces, aes(x = age))+
-  geom_boxplot()+
-  labs(title = "Altersverteilung", x = "Alter in Jahren")+
-  my_theme()
-
-```
-
-## Kombination mit bestehenden Themes
-
-```{r}
-#| fig-width: 6
-#| fig-height: 4
-#| echo: true
-
-ggplot(data = ces, aes(x = age))+
-  geom_boxplot()+
-  labs(title = "Altersverteilung", x = "Alter in Jahren")+
-  theme_light()+
-  my_theme()
 
 ```
 
