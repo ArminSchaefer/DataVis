@@ -1,0 +1,664 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Regressionen
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 07/10/2025
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| include: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, broom, remotes, modelsummary, modelbased, marginaleffects, 
+       tinytable, gt, patchwork, rio, tidyverse)
+
+wkr_daten <- import(here("data", "wkr_daten.csv"))
+
+my_theme <- function(...) theme(
+  plot.title = element_text(color = "black", 
+                            size = 14,
+                            face = "bold"),
+  axis.text = element_text(color = "black", 
+                           size = 12),
+  axis.title = element_text(color = "black",
+                            face = "bold",
+                            size = 12),
+  panel.grid.minor = element_blank())
+
+```
+
+## Zur Vorbereitung
+
+Um Regressionstabellen und -modelle darstellen zu können, benötigen wir einige Bibliotheken, die wir bislang noch nicht verwendet haben. Dazu gehören `broom`, `modelsummary`, `marginaleffects`, `datawizard` sowie `modelbased`, die zunächst installiert werden müssen.
+
+Damit Tabellen gut lesbar sind, benötigen wir das Paket `tt`.
+
+Wir verwenden heute den Datensatz `wkr_daten.csv`.
+
+## Neue Variable erstellen
+
+```{r}
+#| echo: true
+
+wkr_daten <- wkr_daten %>% 
+  mutate(bildung = case_when(
+    abitur>=20 & abitur < 31.3   ~ "niedrig",
+    abitur>=31.3 & abitur < 42.6 ~ "mittel",
+    abitur>=42.6 & abitur < 54   ~ "hoch"),
+    bildung = fct_relevel(bildung, "niedrig", "mittel", "hoch")) %>% 
+    rename(region = ost)
+  
+```
+
+
+## Ein erster Blick auf die Daten
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+#| eval: false
+
+ggplot(data = wkr_daten, 
+       aes(x = wbt,
+           y = afd_perc))+
+  geom_point()+
+  labs(x = "Wahlbeteiligung",
+       y = "AfD-Stimmenanteil", 
+       color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| fig-width: 6
+#| echo: false
+
+ggplot(data = wkr_daten, aes(x = wbt, y = afd_perc))+
+  geom_point()+
+  labs(x = "Wahlbeteiligung",
+       y = "AfD-Stimmenanteil", color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+::::
+
+## Ost- und Westdeutschland
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+#| eval: false
+
+ggplot(data = wkr_daten, 
+       aes(x = wbt,
+           y = afd_perc,
+           color = region))+
+  geom_point()+
+  labs(x = "Wahlbeteiligung",
+       y = "AfD-Stimmenanteil", 
+       color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| fig-width: 6
+#| echo: false
+
+ggplot(data = wkr_daten, aes(x = wbt, y = afd_perc,
+                             color = region))+
+  geom_point()+
+  labs(x = "Wahlbeteiligung",
+       y = "AfD-Stimmenanteil", color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+::::
+
+## Ost- und Westdeutschland
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+#| eval: false
+
+ggplot(data = wkr_daten, 
+       aes(x = wbt,
+           y = afd_perc,
+           color = region))+
+  geom_point()+
+  geom_smooth(method = "lm")+
+  labs(x = "Wahlbeteiligung",
+       y = "AfD-Stimmenanteil", 
+       color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| fig-width: 6
+#| echo: false
+
+ggplot(data = wkr_daten, aes(x = wbt, y = afd_perc,
+                             color = region))+
+  geom_point()+
+  geom_smooth(method = "lm")+
+  labs(x = "Wahlbeteiligung",
+       y = "AfD-Stimmenanteil", color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+::::
+
+## Ein lineares Regressionsmodell
+
+```{r}
+#| echo: true
+
+m1 <- lm(afd_perc ~ wbt + region + bevdichte + alter18_34 + bildung, 
+         data = wkr_daten)
+summary(m1)
+
+```
+
+## Informationen abrufen
+
+Die Funktion `summary()` hilft uns, die Informationen eines Regressionsmodells kompakt darzustellen, erlaubt aber nicht ohne weiteres, weitere Analysen durchzuführen -- beispielsweise die Koeffizienten in einer Grafik darzustellen. Wir können aber auf einzelne Elemente zugreifen. Geben Sie dazu `str(m1)` in die Konsole ein. Dort sehen Sie, welche Informationen `summary(m1)` enthält.
+
+Mit `m1$coefficients` können wir uns beispielsweise die Koeffizienten anzeigen lassen. Und mit `m1$coefficients["wbt"]` rufen wir nur den Koeffizienten für die Wahlbeteiligung ab.
+
+## Informationen mit `broom` erhalten
+
+Um die Ergebnisse verwenden zu können, nutzen wir das Paket [broom]{.alert}. Der dort enthaltene Befehl, um die Modell-Informationen abzurufen, ist `tidy()`.
+
+```{r}
+#| echo: true
+
+tidy(m1, conf.int = TRUE) %>% 
+  mutate(across(where(is.numeric), ~round(., 2))) %>% tt() %>% style_tt(fontsize = .6)
+
+```
+
+## Ergebnisse des Regressionsmodells speichern
+
+```{r}
+#| echo: true
+
+coef_m1 <- tidy(m1, conf.int = TRUE)%>% 
+  mutate(across(where(is.numeric), ~round(., 2)))
+
+head(coef_m1) %>% tt() %>% style_tt(fontsize = .6)
+
+```
+
+## Koeffizienten darstellen
+
+Erstellen Sie nun ein Diagramm, das die Namen der Koeffizienten auf der einen Achse abträgt und den Wert des Koeffizienten als Punkt im Diagramm darstellt.
+
+## Koeffizienten darstellen
+
+```{r}
+#| echo: true
+#| output-location: column
+
+ggplot(data = coef_m1, 
+       aes(x = term, 
+           y = estimate))+
+  geom_point(size = 3)+
+  theme_light()
+
+```
+
+## Koeffizienten darstellen
+
+```{r}
+#| echo: true
+#| output-location: column
+
+coef_m1 %>% 
+  filter(term !="(Intercept)") %>% 
+ggplot(aes(x = term, 
+           y = estimate))+
+  geom_point(size = 3)+
+  theme_light()
+
+```
+
+Wie können wir das Konfidenzintervall darstellen?
+
+## Koeffizienten grafisch darstellen
+
+```{r}
+#| echo: true
+#| output-location: column
+
+coef_m1 %>% 
+  filter(term !="(Intercept)") %>% 
+ggplot(aes(x = term, y = estimate))+
+  geom_hline(yintercept = 0, 
+             color = "grey70")+
+  geom_linerange(aes(ymin = conf.low, 
+                     ymax = conf.high))+
+  geom_point(size = 3, color = "orange")+
+  theme_light()
+
+```
+
+## Koeffizienten grafisch darstellen
+
+```{r}
+#| echo: true
+#| output-location: column
+
+coef_m1 %>% 
+  filter(term !="(Intercept)") %>% 
+ggplot(aes(x = term, y = estimate))+
+  geom_hline(yintercept = 0, 
+             color = "grey70")+
+  geom_linerange(aes(ymin = conf.low, 
+                     ymax = conf.high))+
+  geom_point(size = 3, 
+             color = "orange")+
+  theme_light()+
+  coord_flip()
+
+```
+
+
+## Variablennamen ändern
+
+Der Output von `tidy()` ist mit den `tidyverse()`-Bibliotheken kompatibel, wir können den Datensatz also bearbeiten:
+
+```{r}
+#| echo: true
+
+coef_m1 <- coef_m1 %>% 
+  mutate(term = recode(term, wbt = "Wahlbeteiligung"))
+
+head(coef_m1) %>% tt() %>% style_tt(fontsize = .6)
+
+```
+
+## `modelsummary` nutzt `broom`!
+
+Statt die Daten selbst abzurufen, könnnen wir [modelsummary]{.alert} verwenden, das im Hintergrund ebenfalls [broom]{.alert} nutzt. Im Folgenden verwenden wir zwei Regressionsmodelle.
+
+```{r}
+#| echo: true
+#| eval: false
+
+models <- list(
+  "Modell 1" = lm(afd_perc ~ wbt + alq, data = wkr_daten),
+  "Modell 2" = lm(afd_perc ~ wbt + alq + region, data = wkr_daten)
+)
+
+modelsummary(models) %>% style_tt(fontsize = .6)
+
+```
+
+## Die Tabelle weiter anpassen
+
+```{r}
+
+models <- list(
+  
+"Modell 1" = lm(afd_perc ~ wbt + alq, 
+         data = wkr_daten),
+"Modell 2" = lm(afd_perc ~ wbt + alq + region, 
+         data = wkr_daten)
+)
+
+```
+
+```{r}
+#| echo: true
+#| eval: false
+
+coefname <- c(
+        'wbt'         = "Wahlbeteiligung (%)",
+        'alq'         = 'Arbeitslosenquote (%)',
+        'regionwest'  = 'Westdeutschland',
+        '(Intercept)' = 'Konstante')
+
+modelsummary(models,
+             estimate = "{estimate}{stars}",
+             gof_omit = 'AIC|BIC|Log.Lik|F|RMSE', # Modellgüte-Parameter ausschließen
+             coef_map = coefname) %>% # oben definierte Namen verwenden
+   style_tt(fontsize = .6)
+
+```
+
+Auf der Webseite für [tinytable](https://vincentarelbundock.github.io/tinytable/) werden zahlreiche weitere Gestaltungsmöglichkeiten für Tabellen vorgestellt.
+
+## Angepasste Tabelle
+
+```{r}
+#| echo: false
+
+coefname <- c('wbt' = "Wahlbeteiligung (%)",
+              'alq'    = 'Arbeitslosenquote (%)',
+              'regionwest'     = 'Westdeutschland',
+              '(Intercept)' = 'Konstante')
+
+modelsummary(models,
+             estimate = "{estimate}{stars}",
+             gof_omit = 'AIC|BIC|Log.Lik|F|RMSE', # Modellgüte-Parameter ausschließen
+             coef_map = coefname) %>%  # definierte Namen verwenden
+  style_tt(fontsize = .6)
+
+```
+
+## Koeffizientenplot
+
+Praktischerweise erlaubt [modelsummary]{.alert} es auch, Koeffizientenplots darzustellen. Die Syntax ist ganz ähnlich und wir können `ggplot()`-Elemente ergänzen:
+
+```{r}
+#| output-location: column
+#| echo: true
+
+coefname <- c(
+        'regionwest' = 'Westdeutschland',
+        'wbt'        = "Wahlbeteiligung (%)",
+        'alq'        = 'Arbeitslosenquote (%)')
+
+
+modelplot(models, coef_map = coefname)+
+  geom_vline(xintercept = 0, 
+             color = "grey70")+
+  labs(x = "Koeffizienten", 
+       color = NULL)+
+  theme_light(base_size = 22)
+
+```
+
+# Ergebnisse grafisch präsentieren
+
+## Vorhergesagte Mittelwerte
+
+```{r}
+#| echo: true
+
+model <- lm(afd_perc ~ wbt + abitur + region, data = wkr_daten)
+
+means <- estimate_means(model, by = "region")
+means %>% tt() %>% style_tt(fontsize = .6) %>% format_tt(digits = 2)
+
+```
+
+## Geschätzter Mittelwert und Datenverteilung
+
+```{r}
+
+ggplot(wkr_daten, aes(x = region, y = afd_perc)) +
+  geom_violin(aes(fill = region), color = "white") +
+  geom_jitter(width = 0.05, height = 0, alpha = 0.4, size = 2) +
+  geom_pointrange(
+    data = means,
+    aes(y = Mean, ymin = CI_low, ymax = CI_high),
+    size = 0.8,
+    color = "white"
+  ) +
+  scale_fill_manual(values = c("pink", "lightblue", "lightgreen")) +
+  theme_minimal()
+
+```
+
+## Kontraste
+
+```{r}
+
+model <- lm(afd_perc ~ wbt + region, data = wkr_daten)
+
+contrasts <- estimate_contrasts(model, contrast = "region")
+contrasts %>% mutate(across(where(is.numeric), ~ round(., 2))) %>% tt()
+
+```
+
+# Interaktionseffekte
+
+## Vorhergesagte Werte in einer Tabelle
+
+```{r}
+#| echo: true
+
+model <- lm(afd_perc ~ wbt + region * bildung, data = wkr_daten)
+
+estimate_means(model, by = c("region", "bildung")) %>% 
+  tt() %>% style_tt(fontsize = 0.6)
+
+```
+
+## Vorhergesagte Werte als Grafik
+
+```{r}
+#| echo: true
+#| eval: false
+
+estimate_means(model, by = c("region", "bildung")) %>% 
+  ggplot(aes(x = bildung, y = Mean, ymin = CI_low, ymax = CI_high, color = region))+
+  geom_pointrange() +
+  scale_y_continuous(limits = c(0, 30))+
+  labs(x = "Bildung", y = "Vorhergesagter Wert")+
+  theme_bw()
+
+```
+
+## Vorhergesagte Werte als Grafik
+
+```{r}
+#| echo: false
+
+estimate_means(model, by = c("region", "bildung")) %>% 
+  ggplot(aes(x = bildung, y = Mean, 
+               ymin = CI_low, ymax = CI_high, 
+               color = region))+
+  geom_pointrange() +
+  scale_y_continuous(limits = c(0, 30))+
+  labs(x = "Bildung", y = "Vorhergesagter Wert")+
+  theme_bw()
+
+```
+
+## Vorhergesagte Werte als Grafik
+
+```{r}
+#| echo: true
+#| output-location: column
+
+
+estimate_means(model, by = c("region", "bildung")) %>% 
+  ggplot(aes(x = bildung, y = Mean, 
+               ymin = CI_low, ymax = CI_high, 
+               color = region))+
+  geom_line(aes(group = region))+
+  geom_pointrange() +
+  scale_color_viridis_d(option = "inferno", begin = .2, end = .7)+
+  scale_y_continuous(limits = c(0, 30))+
+  labs(x = "Bildung", y = "Vorhergesagter Wert")+
+  theme_bw()
+
+```
+## Kontraste bei Interaktionseffekten (kategorial * kategorial)
+
+```{r}
+#| echo: true
+#| output-location: column
+
+model <- lm(afd_perc ~ wbt + region * bildung, 
+            data = wkr_daten)
+
+difference <- estimate_contrasts(model, 
+  contrast = "bildung", by = "region") %>% 
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+difference  %>% tt() %>% 
+  style_tt(fontsize = 0.6)
+
+```
+
+## Kontraste bei Interaktionseffekten (kategorial * kategorial)
+
+```{r}
+#| echo: true
+#| eval: false
+difference$contrast <- paste(difference$Level1, "-", difference$Level2)
+
+ggplot(data = difference,  aes(x = contrast, y = Difference, 
+           ymin = CI_low, ymax = CI_high, color = region))+
+  geom_hline(yintercept = 0, color = "grey70", ewidth = 1.2)+
+  geom_pointrange(position = position_dodge(width = 0.12), fatten = 6)+
+  theme_light()
+
+```
+
+## Kontraste bei Interaktionseffekten (kategorial * kategorial)
+
+```{r}
+#| echo: false
+
+difference$contrast <- paste(difference$Level1, "-", difference$Level2)
+
+ggplot(data = difference,  aes(x = contrast, y = Difference, 
+           ymin = CI_low, ymax = CI_high, color = region))+
+  geom_hline(yintercept = 0, color = "grey70", ewidth = 1.2)+
+  geom_pointrange(position = position_dodge(width = 0.12), fatten = 6)+
+  theme_light()
+
+```
+
+## Kontraste bei Interaktionseffekten (kontinuierlich * kategorial)
+
+```{r}
+#| echo: true
+#| output-location: column
+
+model <- lm(afd_perc ~ wbt * region + abitur, data = wkr_daten)
+
+difference <- estimate_contrasts(
+  model,
+  contrast = "region",
+  by = "wbt",
+  length = 5
+) %>% mutate(across(where(is.numeric), ~ round(., 2)))
+
+difference  %>% tt() %>% 
+  style_tt(fontsize = 0.6)
+
+```
+
+## Marginaler Effekt der Region
+
+```{r}
+#| echo: true
+#| output-location: column
+
+ggplot(data = difference, 
+       aes(x = wbt,
+           y = Difference,
+           ymin = CI_low,
+           ymax = CI_high))+
+  geom_hline(yintercept = 0, 
+             color = "grey70")+
+  geom_pointrange()+
+  theme_bw()
+
+```
+
+## Vorhergesagte Werte nach Region
+
+```{r}
+#| echo: true
+#| output-location: column
+
+estimate_means(model, by = c("region", "wbt")) %>% 
+  ggplot(aes(x = wbt, y = Mean, 
+             ymin = CI_low, ymax = CI_high,
+             fill = region))+
+  geom_ribbon(alpha = 0.5)+
+  geom_line(aes(color = region))+
+  scale_y_continuous(limits = c(0,30))+
+  theme_light()+
+  theme(panel.grid.minor = element_blank())
+
+```
+
+## Marginaler Effekt der Region
+
+```{r}
+#| echo: true
+#| output-location: column
+
+estimate_contrasts(
+  model,
+  contrast = "region",
+  by = "wbt",
+  length = 100) %>% 
+  mutate(across(where(is.numeric), ~ round(., 2))) %>% 
+  ggplot(aes(x = wbt, y = Difference, 
+             ymin = CI_low, ymax = CI_high))+
+  geom_hline(yintercept = 0, 
+             color = "grey70")+
+  geom_ribbon(fill = "lightblue", 
+              alpha = 0.5)+
+  geom_line(color = "blue")+
+  theme_minimal()
+
+
+```
+
+##
+
+```{r}
+
+sessionInfo()
+
+```
+
+

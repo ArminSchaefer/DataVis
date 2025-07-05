@@ -24,9 +24,10 @@ date-format: DD.MM.YYYY
 #| warning: false
 
 if(!require("pacman")) {install.packages("pacman");library(pacman)}
-p_load(here, scales, rio, gt, tidyverse)
+p_load(here, scales, rio, patchwork, gt, tidyverse)
 
-ces <- import(here("data", "ces_usa.csv"))
+ces  <- import(here("data", "ces_usa.csv"))
+vdem <- import(here("data", "vdem.RDS"))
 
 ```
 
@@ -93,7 +94,9 @@ knitr::include_graphics(here("pics", "elements_themes.png"))
 
 p1 <- ggplot(data = ces, aes(x = age))+
   geom_boxplot()+
-  labs(x = "Alter in Jahren")
+  labs(x = "Alter in Jahren", title = "Einfache Boxplot-Darstellung")
+
+p1
 
 ```
 
@@ -160,16 +163,13 @@ Weitere Möglichkeiten sind [hier](https://ggplot2.tidyverse.org/reference/theme
 ```{r}
 #| echo: true
 
-my_theme <- function(...) theme(
-  plot.title = element_text(color = "black", 
-                            size = 14,
-                            face = "bold"),
-  axis.text = element_text(color = "black", 
-                           size = 12),
-  axis.title = element_text(color = "black",
-                            face = "bold",
-                            size = 12),
+my_theme <- function(...){
+  theme(
+  plot.title = element_text(color = "black", size = 14, face = "bold"),
+  axis.text = element_text(color = "black", size = 12),
+  axis.title = element_text(color = "black", face = "bold", size = 12),
   panel.grid.minor = element_blank())
+}
 
 ```
 
@@ -203,19 +203,799 @@ ggplot(data = ces, aes(x = age))+
 
 ```
 
-## Evaluation
+# Trends visualisieren
+
+## VDem-Daten
+
+Laden Sie den in Moodle abgelegten Datensatz [vdem.RDS]{.tip} herunter, lesen Sie ihn mit dem Befehl `import()` ein und speichern Sie ihn unter dem Namen [vdem]{.tip} ab. Schauen Sie sich bitte den Datensatz an und besprechen Sie miteinander dessen Aufbau. Was fällt Ihnen auf?
+
+Suchen Sie die Kurzbezeichnung für Deutschland heraus. Wie machen Sie das?
+
+## Entwicklung der Demokratie in Deutschland
+
+Erstellen Sie diese Grafik mit Hilfe von `geom_line()`. Wie wählen Sie das Land aus?
+
+::: {.panel-tabset}
+
+## Grafik
 
 ```{r}
-#| out-width: "40%"
-#| fig-align: center
+#| out-width: 60%
+#| echo: false
 
-knitr::include_graphics(here("pics", "qr_eval.png"))
+vdem %>%  
+  filter(country_text_id == "DEU") %>% 
+  ggplot(aes(x = year, y = v2x_libdem))+
+  geom_line(linewidth = 1.1)+
+  labs(x = NULL, title="Deutschland")+
+  scale_y_continuous(limits = c(0,1))+
+  theme_light()+
+  my_theme()
+
 
 ```
 
-Losung: 472TN
+## Code
 
-## Session Info
+```{r}
+#| eval: false
+#| echo: true
+
+vdem %>%  
+  filter(country_text_id == "DEU") %>% 
+  ggplot(aes(x = year, y = v2x_libdem))+
+  geom_line()+
+  labs(x = NULL)+
+  scale_y_continuous(limits = c(0,1))+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+
+## Entwicklung in vier Ländern
+
+Als nächstes wählen wir vier Länder aus: **DEU, HUN, SWE und ITA** und beschränken die Auswahl auf die **Jahre seit 2000**.
+
+
+```{r}
+#| eval: false
+#| echo: true
+
+selected <- c("DEU", "HUN", "SWE", "ITA")
+
+vdem %>%  
+  filter(country_text_id %in% selected) %>% # beachten Sie das Auswahlzeichen %in%
+  filter(year > 1999) %>% 
+  ggplot(aes(x = year, y = v2x_libdem))+
+  geom_line()+
+  labs(x = NULL)+
+  scale_y_continuous(limits = c(0,1))+
+  theme_light()+
+  my_theme()
+
+```
+
+Was passiert hier???
+
+## Entwicklung in vier Ländern
+
+```{r}
+#| echo: false
+
+selected <- c("DEU", "HUN", "SWE", "ITA")
+
+vdem %>%  
+  filter(country_text_id %in% selected) %>% 
+  filter(year > 1999) %>% 
+  ggplot(aes(x = year, y = v2x_libdem))+
+  geom_line(color = "grey70")+
+  geom_point(aes(color = country_text_id))+
+  scale_y_continuous(limits = c(0,1))+
+  labs(x = NULL, color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+## Datenstruktur beachten!
+
+Da im Datensatz jede Zeile für ein Länder-Jahr steht, gibt es für **jedes Jahr mehrere Werte**. Wir müssen R mitteilen, dass die Daten gruppiert sind.
+
+```{r}
+#| echo: true
+#| eval: false
+#| code-line-numbers: 5
+#| out-width: 50%
+
+vdem %>%  
+  filter(country_text_id %in% selected) %>% 
+  filter(year > 1999) %>% 
+  ggplot(aes(x = year, y = v2x_libdem))+
+  geom_line(aes(group = country_text_id))+
+  scale_y_continuous(limits = c(0,1))+
+  labs(x = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+Dasselbe erreichen wir auch erreicht, indem wir `color = country_text_id` eingegeben, aber nicht immer wollen wir -- wie Sie noch sehen werden -- jedem Land eine eigene Farbe geben. Fügen Sie deshalb nun die Farbe **zusätzlich** hinzu.
+
+## Entwicklung in vier Ländern
+
+::: {.panel-tabset}
+
+## Grafik
+
+```{r}
+#| out-width: 80%
+#| echo: false
+#| eval: true
+
+vdem %>%  
+  filter(country_text_id %in% selected) %>% 
+  filter(year > 1999) %>% 
+  ggplot(aes(x = year, y = v2x_libdem))+
+  geom_line(aes(group = country_text_id,
+             color = country_text_id))+
+  scale_y_continuous(limits = c(0,1))+
+  labs(x = NULL, color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+## Code
+
+```{r}
+#| echo: true
+#| eval: false
+
+vdem %>%  
+  filter(country_text_id %in% selected) %>% 
+  filter(year > 1999) %>% 
+  ggplot(aes(x = year, y = v2x_libdem))+
+  geom_line(aes(group = country_text_id, color = country_text_id))+
+  scale_y_continuous(limits = c(0,1))+
+  labs(x = NULL, color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+
+## Demokratieentwicklung in allen Ländern
+
+Erstellen Sie nun eine Grafik, die die Demokratieentwicklung *in allen Ländern* darstellt und verwenden Sie einen Grauton als Linienfarbe.
+
+## Demokratieentwicklung in allen Ländern
+
+::: {.panel-tabset}
+
+## Grafik
+
+```{r}
+#| echo: false
+#| eval: true
+
+vdem %>% 
+  ggplot(aes(x = year, y = v2x_libdem))+
+  geom_line(aes(group = country_text_id), 
+            color = "grey60")+
+  scale_y_continuous(limits = c(0,1))+
+  labs(x = NULL, color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+## Code
+
+```{r}
+#| echo: true
+#| eval: false
+
+vdem %>% 
+  ggplot(aes(x = year, y = v2x_libdem) )+
+  geom_line(aes(group = country_text_id), 
+            color = "grey60")+
+  scale_y_continuous(limits = c(0,1))+
+  labs(x = NULL, color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+
+## Demokratieentwicklung in allen Ländern -- mit Trendlinie
+
+::: {.panel-tabset}
+
+## Grafik
+
+```{r}
+#| echo: false
+#| eval: true
+
+vdem %>% 
+  ggplot(aes(x = year, y = v2x_libdem))+
+  geom_line(aes(group = country_text_id), 
+            color = "grey60")+
+  geom_smooth(linewidth = 1.1, 
+              method = "loess",
+              color = "blue")+
+  scale_y_continuous(limits = c(0,1))+
+  labs(x = NULL, color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+## Code
+
+```{r}
+#| echo: true
+#| eval: false
+
+vdem %>% 
+  ggplot(aes(x = year, y = v2x_libdem) )+
+  geom_line(aes(group = country_text_id), 
+            color = "grey60")+
+  geom_smooth(linewidth = 1.1, method = "loess",
+              color = "blue")+
+  scale_y_continuous(limits = c(0,1))+
+  labs(x = NULL, color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+
+## Hervorhebung eines Lands
+
+Erstellen Sie nun die folgende Abbildung:
+
+```{r}
+#| out-width: 60%
+#| echo: false
+
+one_country <- vdem %>% 
+  filter(country_name == "Germany")
+
+ggplot()+
+  geom_line(data = vdem,
+            aes(x = year, y = v2x_libdem,
+                group = country_name), 
+            color = "grey70")+
+  geom_line(data = one_country,
+            aes(x = year, 
+                y = v2x_libdem, 
+                color = country_name), 
+            linewidth = 1.1)+
+  labs(x = NULL, y = "Demokratieindex", 
+       color = NULL)+
+  scale_y_continuous(limits = c(0,1))+
+  theme_light()+
+  my_theme()+
+  theme(legend.position = "top")
+
+```
+
+## Hervorheben eines Lands -- Schritt 1
+
+```{r}
+#| echo: true
+#| eval: false
+
+one_country <- vdem %>% 
+  filter(country_name == "Germany")
+
+ggplot()+
+  geom_line(data = one_country,
+            aes(x = year, y = v2x_libdem, color = country_name), 
+            linewidth = 1.1)+
+  labs(x = NULL, y = "Demokratieindex", 
+       color = NULL)+
+  scale_y_continuous(limits = c(0,1))+
+  theme_light()+
+  my_theme()+
+  theme(legend.position = "top")
+
+```
+
+## Hervorheben eines Lands -- Schritt 2
+
+```{r}
+#| echo: true
+#| eval: false
+
+ggplot()+
+  geom_line(data = vdem,
+            aes(x = year, y = v2x_libdem, group = country_name), 
+            color = "grey70")+
+  geom_line(data = one_country,
+            aes(x = year, y = v2x_libdem, color = country_name), 
+            linewidth = 1.1)+
+  labs(x = NULL, y = "Demokratieindex", 
+       color = NULL)+
+  scale_y_continuous(limits = c(0,1))+
+  theme_light()+
+  my_theme()+
+  theme(legend.position = "top")
+
+```
+
+Erstellen Sie auf dieser Grundlage eine Funktion, um die gleiche Grafik für andere Länder erstellen zu können.
+
+## Hervorheben eines Lands -- in einer Funktion
+
+```{r}
+#| echo: true
+#| eval: false
+
+highlight_ggplot <- function(...){
+  
+one_country <- vdem %>% 
+  filter(country_name == ...)
+
+ggplot()+
+  geom_line(data = vdem, aes(group = country_text_id, x = year, y = v2x_libdem),
+            color = "grey80", linewidth = .7)+
+  geom_line(data = one_country, 
+            aes(x = year, y = v2x_libdem, color = country_name),
+            linewidth = 1.1)+
+  scale_color_manual(values = c("orange"))+
+  labs(x = NULL, y = "Demokratieindex", color = NULL)+
+  scale_y_continuous(limits = c(0,1))+
+  theme_light()+
+  my_theme()+
+  theme(legend.position = "top")
+}
+
+```
+
+## Hervorhebne eines Landes -- Brasilien
+
+highlight_ggplot("Brazil")
+
+```{r}
+#| echo: false
+
+highlight_ggplot <- function(...){
+  
+one_country <- vdem %>% 
+  filter(country_name == ...)
+
+ggplot()+
+  geom_line(data = vdem, aes(group = country_text_id, x = year, y = v2x_libdem),
+            color = "grey80", linewidth = .7)+
+  geom_line(data = one_country, 
+            aes(x = year, y = v2x_libdem, color = country_name),
+            linewidth = 1.1)+
+  scale_color_manual(values = c("orange"))+
+  labs(x = NULL, y = "Demokratieindex", color = NULL)+
+  scale_y_continuous(limits = c(0,1))+
+  theme_light()+
+  my_theme()+
+  theme(legend.position = "top")
+}
+highlight_ggplot("Brazil")
+
+```
+
+## Durchschnittswert des Demokratieindexes
+
+Statt einzelne Länder zu betrachten, wollen wir nun den durchschnittlichen, weltweiten Demokratiewert im Zeitverlauf abbilden. Wie gehen Sie vor?
+
+```{r}
+#| out-width: 60%
+#| echo: false
+
+vdem %>% 
+  group_by(year) %>% 
+  summarise(mlibdem = mean(v2x_libdem, na.rm=TRUE)) %>% 
+  ggplot(aes(x = year, y = mlibdem))+
+  geom_line()+
+  labs(x = NULL, y = "Demokratieindex", color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+## Durchschnittswert des Demokratieindexes
+
+```{r}
+#| echo: true
+#| eval: false
+
+vdem %>% 
+  group_by(year) %>% 
+  summarise(mlibdem = mean(v2x_libdem, na.rm=TRUE)) %>% 
+  ggplot(aes(x = year, y = mlibdem))+
+  geom_line()+
+  labs(x = NULL, y = "Demokratieindex", color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+## Durchschnittswert des Demokratieindexes
+
+::: {.panel-tabset}
+
+## Code
+
+Was macht dieser Code?
+
+```{r}
+#| echo: true
+#| eval: false
+
+vdem %>% 
+  group_by(year) %>% 
+  summarise(mlibdem = mean(v2x_libdem, na.rm=TRUE)) %>% 
+  ggplot(aes(x = year, y = mlibdem, color = mlibdem))+
+  geom_line(linewidth = 1.2)+
+  scale_color_gradient2(
+    low = "darkred", 
+    mid = "yellow", 
+    high = "green", 
+    midpoint = .5)+
+  labs(x = NULL, y = "Demokratieindex", color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+## Grafik
+
+```{r}
+#| echo: false
+#| out-width: "80%"
+
+vdem %>% 
+  group_by(year) %>% 
+  summarise(mlibdem = mean(v2x_libdem, 
+                           na.rm=TRUE)) %>% 
+  ggplot(aes(x = year, y = mlibdem, 
+             color = mlibdem))+
+  geom_line(linewidth = 1.2)+
+  scale_color_gradient2(
+    low = "darkred", 
+    mid = "yellow", 
+    high = "green", 
+    midpoint = .5)+
+  labs(x = NULL, y = "Demokratieindex",
+       color = NULL)+
+  theme_light()+
+  my_theme()
+
+```
+
+:::
+
+## Durchschnittswert des Demokratieindexes -- in den Kontinenten
+
+```{r}
+#| fig-width: 9
+#| eval: false
+#| echo: true
+
+vdem %>% 
+  group_by(continent, year) %>% 
+  summarise(mlibdem = mean(v2x_libdem, na.rm=TRUE)) %>% 
+  ggplot(aes(x = year, y = mlibdem, color = mlibdem))+
+  geom_line(linewidth = 1.2)+
+  scale_y_continuous(limits = c(0,1))+
+  scale_color_gradient2(
+    low = "darkred", 
+    mid = "yellow", 
+    high = "darkgreen", 
+    midpoint = .5)+
+  labs(x = NULL, y = "Demokratieindex", color = NULL)+
+  theme_light()+
+  my_theme()+
+  theme(axis.text.x = element_text(angle = 90))+
+  facet_wrap(~ continent)
+
+```
+
+## Durchschnittswert des Demokratieindexes -- in den Kontinenten
+
+```{r}
+#| echo: false
+#| fig-width: 9
+
+vdem %>% 
+  group_by(continent, year) %>% 
+  summarise(mlibdem = mean(v2x_libdem, na.rm=TRUE)) %>% 
+  ggplot(aes(x = year, y = mlibdem, color = mlibdem))+
+  geom_line(linewidth = 1.2)+
+  scale_y_continuous(limits = c(0,1))+
+  scale_color_gradient2(
+    low = "darkred", 
+    mid = "yellow", 
+    high = "darkgreen", 
+    midpoint = .5)+
+  labs(x = NULL, y = "Demokratieindex", color = NULL)+
+  theme_light()+
+  my_theme()+
+  theme(axis.text.x = element_text(angle = 90))+
+  facet_wrap(~ continent)
+
+```
+
+# Veränderung zwischen zwei Zeitpunkten
+
+## "Backsliding" in Europa?
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| out-width: 100%
+#| echo: false
+
+selected_countries <- c("DEU", "DNK", "ESP", "GRC", "HUN", "ITA", "NLD", "POL", 
+                        "ROU", "RUS", "SRB", "SWE")
+
+tmp <- vdem %>% 
+  filter(year == 2000 | year == 2022) %>% 
+  filter(country_text_id %in% selected_countries) %>% 
+  select(country_text_id, year, v2x_libdem) %>% 
+  pivot_wider(id_cols = country_text_id, 
+              names_from = "year", 
+              values_from = "v2x_libdem") %>% 
+  rename(past = "2000",
+         present = "2022") %>% 
+  mutate(diff = present - past,
+         country_text_id = fct_reorder(country_text_id, present))
+
+ggplot(data = tmp)+
+  geom_linerange(aes(y = country_text_id, 
+                     xmin = past, 
+                     xmax = present),
+                 color = "grey60", linewidth = 3)+
+  geom_point(aes(y = country_text_id, x = past, 
+                 color = "2000"), size = 2.5)+
+  geom_point(aes(y = country_text_id, x = present, 
+                 color = "2022"), size = 2.5)+
+  scale_x_continuous(limits = c(0,1))+
+  scale_color_manual(values = c("blue", "red"))+
+  labs(y = NULL, x = "Demokratieindex", color = NULL)+
+  theme_light()
+  
+```
+
+:::
+
+::: {.column width="50%"}
+
+Um diese Grafik erstellen zu können, verwenden wir in `ggplot()` u.a. den Befehl `geom_linerange`. Geben Sie nun `?geom_linerange` in die Konsole ein. Wie unterscheiden sich die Angaben innerhalb von `aes()` von bisherigen Grafiken?
+
+:::
+::::
+
+## "Backsliding" in Europa?
+
+::: {style="font-size: 0.8em"}
+
+Um die vorherige Grafik zu erstellen, müssen wir den Datensatz vorbereiten. Ziel ist es, das Land in der ersten Spalte zu haben, den Wert des Demokratieindexes (`v2x_libdem`) aus dem Jahr 2000 in der zweiten und den aus dem Jahr 2022 in der dritten Spalte. Um die Grafik übersichtlich zu halten, wählen wir 12 Länder aus: DNK, SWE, DEU, ESP, GRC, ITA, HUN, NLD, POL, ROU, RUS, SRB.
+
+:::
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+Long format:
+
+```{r}
+#| echo: false
+
+vdem %>% filter(country_text_id %in% c("DEU", "DNK", "ESP", "GRC", "HUN", "ITA", "NLD", "POL", 
+                        "ROU", "RUS", "SRB", "SWE")) %>% 
+  filter(year == 2000 | year == 2022) %>% 
+  select(country_text_id, year, v2x_libdem) %>% 
+  head(12)
+
+```
+
+
+:::
+
+::: {.column width="50%"}
+
+Wide format:
+
+```{r}
+#| echo: false
+
+vdem %>% filter(country_text_id %in% c("DEU", "DNK", "ESP", "GRC", "HUN", "ITA", "NLD", "POL", 
+                        "ROU", "RUS", "SRB", "SWE")) %>% 
+  filter(year == 2000 | year == 2022) %>% 
+  select(country_text_id, year, v2x_libdem) %>% 
+  pivot_wider(id_cols = country_text_id, 
+              names_from = "year", values_from = "v2x_libdem") %>% 
+  rename(past    = "2000", present = "2022") %>% 
+  mutate(diff = present - past) %>% 
+  as.data.frame()
+  head(12)
+
+```
+
+:::
+
+::::
+
+## Vorbereitung des Datensatzes
+
+```{r}
+#| echo: true
+
+selected_countries <- c("DEU", "DNK", "ESP", "GRC", "HUN", "ITA", "NLD", "POL", 
+                        "ROU", "RUS", "SRB", "SWE")
+
+vdem_back <- vdem %>% 
+  filter(year == 2000 | year == 2022) %>% 
+  filter(country_text_id %in% selected_countries) %>% 
+  select(country_text_id, year, v2x_libdem) %>% 
+  pivot_wider(id_cols = country_text_id, 
+              names_from = "year", values_from = "v2x_libdem") %>% 
+  rename(past = "2000", present = "2022") %>% 
+  mutate(diff = present - past)
+
+```
+
+## Dumbbell plot -- erstes Element
+
+```{r}
+#| echo: true
+#| fig-width: 5
+#| fig-height: 4
+
+ggplot(data = vdem_back)+
+  geom_linerange(aes(y = country_text_id, xmin = past, xmax = present), linewidth = 3)+
+  scale_x_continuous(limits = c(0,1))+
+  labs(y = NULL, x = "Demokratieindex")+
+  theme_light()+
+  my_theme()
+  
+```
+
+## Datensatz ordnen
+
+::: {style="font-size: 0.8em"}
+
+Die Reihenfolge der Länder ließe sich auch innerhalb des `ggplot()`-Befehls ändern, aber da wir das mehrfach tun müssten, ordnen wir lieber den Datensatz in der gewünschten Reihenfolge.
+
+:::
+
+```{r}
+#| echo: true
+
+selected_countries <- c("DEU", "DNK", "ESP", "GRC", "HUN", "ITA", 
+                        "NLD", "POL", "ROU", "RUS", "SRB", "SWE")
+
+vdem_back <- vdem %>% 
+  filter(year == 2000 | year == 2022) %>% 
+  filter(country_text_id %in% selected_countries) %>% 
+  select(country_text_id, year, v2x_libdem) %>% 
+  pivot_wider(id_cols = country_text_id, 
+              names_from = "year", 
+              values_from = "v2x_libdem") %>% 
+  rename(past = "2000",
+         present = "2022") %>% 
+  mutate(diff = present - past,
+         country_text_id = fct_reorder(country_text_id, present))
+
+```
+
+## Die Punkte für beide Jahre hinzufügen
+
+```{r}
+#| echo: true
+#| eval: false
+
+ggplot(data = vdem_back)+
+  geom_linerange(aes(y = country_text_id, xmin = past, xmax = present),
+                 color = "grey80", linewidth = 3)+
+  geom_point(aes(y = country_text_id, x = past), size = 2.5)+
+  geom_point(aes(y = country_text_id, x = present), size = 2.5)+
+  scale_x_continuous(limits = c(0,1))+
+  labs(y = NULL, x = "Demokratieindex", color = NULL)+
+  theme_light()
+  
+```
+
+Fügen Sie nun die Farben "blue" und "red" hinzu. Warum fehlt die Legende?
+
+## Die Punkte für beide Jahre hinzufügen -- Farben & Legende hinzufügen
+
+```{r}
+#| echo: true
+#| eval: false
+
+ggplot(data = vdem_back)+
+  geom_linerange(aes(y = country_text_id, xmin = past, xmax = present),
+                 linewidth = 3)+
+  geom_point(aes(y = country_text_id, x = past, color = "2000"), size = 2.5)+
+  geom_point(aes(y = country_text_id, x = present, color = "2022"), size = 2.5)+
+  scale_x_continuous(limits = c(0,1))+
+  scale_color_manual(values = c("blue", "red"))+
+  labs(y = NULL, x = "Demokratieindex", color = NULL)+
+  theme_light()
+  
+```
+
+
+## Dumbbell plot -- fertig!
+
+:::: {.columns}
+
+::: {.column width="55%"}
+
+```{r}
+#| echo: true
+#| eval: false
+
+ggplot(data = vdem_back)+
+  geom_linerange(aes(y = country_text_id, 
+                     xmin = past, 
+                     xmax = present),
+                 color = "grey90", 
+                 linewidth = 3)+
+  geom_point(aes(y = country_text_id, 
+                 x = past, color = "2000"), 
+             size = 2.5)+
+  geom_point(aes(y = country_text_id, 
+                 x = present, color = "2022"), 
+             size = 2.5)+
+  scale_x_continuous(limits = c(0,1))+
+  scale_color_manual(values = c("blue", "red"))+
+  labs(y = NULL, x = "Demokratieindex",
+       color = NULL)+
+  theme_light()
+  
+```
+
+:::
+
+::: {.column width="45%"}
+
+
+```{r}
+#| fig-width: 7
+#| echo: false
+
+ggplot(data = vdem_back)+
+  geom_linerange(aes(y = country_text_id, 
+                     xmin = past, 
+                     xmax = present),
+                 color = "grey90", linewidth = 3)+
+  geom_point(aes(y = country_text_id, x = past, 
+                 color = "2000"), size = 2.5)+
+  geom_point(aes(y = country_text_id, x = present, 
+                 color = "2022"), size = 2.5)+
+  scale_x_continuous(limits = c(0,1))+
+  scale_color_manual(values = c("blue", "red"))+
+  labs(y = NULL, x = "Demokratieindex", color = NULL)+
+  theme_light()+
+  my_theme()
+  
+```
+
+:::
+
+::::
+
+##
 
 ```{r}
 
