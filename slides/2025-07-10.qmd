@@ -41,6 +41,18 @@ my_theme <- function(...) theme(
 
 ```
 
+## Regressionsmodelle
+
+In dieser und in der kommenden Sitzung befassen wir uns mit Regressionsmodellen. Zunächst schauen wir uns lineare Regression an, dann logistische. Für viele Fragestellungen in der Plitikwissenschaft reichen diese beiden Varianten aus -- oder zumindest bauen komplexere Modelle darauf auf. Wir konzentrieren uns auf drei Ziele:
+
+1. Wie lassen sich die Ergebnisse in Tabellen zusammenfassen?
+
+2. Wie lassen sich die Koeffizienten grafisch darstellen?
+
+3. Wie lassen sich die vorhergesagten Werte ermitteln und darstellen?
+
+4. Wie lassen sich Interaktionseffekte interpretieren und visualisieren?
+
 ## Zur Vorbereitung
 
 Um Regressionstabellen und -modelle darstellen zu können, benötigen wir einige Bibliotheken, die wir bislang noch nicht verwendet haben. Dazu gehören `broom`, `modelsummary`, `marginaleffects`, `datawizard` sowie `modelbased`, die zunächst installiert werden müssen.
@@ -199,24 +211,39 @@ ggplot(data = wkr_daten, aes(x = wbt, y = afd_perc,
 
 ## Ein lineares Regressionsmodell
 
+
+```{r}
+#| echo: true
+#| eval: false
+
+lm(afd_perc ~ wbt + region + bildung, data = wkr_daten)
+
+```
+
+::: {.callout-note title="Hinweis"}
+Die Befehle folgen immer dem gleichen Aufbau. Zunächst wird festgelegt, welches Modell verwendet wird. `lm` steht für ein lineares Regressionsmodell. Andere varianten sind `glm` für generalisierte lineare Modelle oder `lmer` für ein lineares Mehrebenenmodell. Dann folgt die Formel, die angibt, welche Variable als abhängige Variable verwendet wird, nach der `~` gefolgt von den unabhängigen Variablen, die mit Pluszeichen verknüpft werden. Die Daten werden mit `data =` angegeben.
+:::
+
+## Ein lineares Regressionsmodell
+
+Wir schätzen zunächst das Modell und zeigen die Ergebnisse mit `summary()` an.
 ```{r}
 #| echo: true
 
-m1 <- lm(afd_perc ~ wbt + region + bevdichte + alter18_34 + bildung, 
-         data = wkr_daten)
+m1 <- lm(afd_perc ~ wbt + region + bildung, data = wkr_daten)
 summary(m1)
 
 ```
 
 ## Informationen abrufen
 
-Die Funktion `summary()` hilft uns, die Informationen eines Regressionsmodells kompakt darzustellen, erlaubt aber nicht ohne weiteres, weitere Analysen durchzuführen -- beispielsweise die Koeffizienten in einer Grafik darzustellen. Wir können aber auf einzelne Elemente zugreifen. Geben Sie dazu `str(m1)` in die Konsole ein. Dort sehen Sie, welche Informationen `summary(m1)` enthält.
+Die Funktion `summary()` hilft uns zwar, die Informationen eines Regressionsmodells kompakt darzustellen, erlaubt aber nicht ohne weiteres, weitere Analysen durchzuführen -- beispielsweise die Koeffizienten in einer Grafik darzustellen. Wir können aber auf einzelne Elemente zugreifen. Geben Sie dazu `str(m1)` in die Konsole ein. Dort sehen Sie, welche Informationen `summary(m1)` enthält.
 
 Mit `m1$coefficients` können wir uns beispielsweise die Koeffizienten anzeigen lassen. Und mit `m1$coefficients["wbt"]` rufen wir nur den Koeffizienten für die Wahlbeteiligung ab.
 
 ## Informationen mit `broom` erhalten
 
-Um die Ergebnisse verwenden zu können, nutzen wir das Paket [broom]{.alert}. Der dort enthaltene Befehl, um die Modell-Informationen abzurufen, ist `tidy()`.
+Um die Ergebnisse als bearbeitbaren Datensatz zu erhalten, nutzen wir das Paket [broom]{.alert}. Der dort enthaltene Befehl, um die Modell-Informationen in eine Datentabelle zu überführen, ist `tidy()`.
 
 ```{r}
 #| echo: true
@@ -226,6 +253,40 @@ tidy(m1, conf.int = TRUE) %>%
 
 ```
 
+## Was sagt das Modell aus?
+
+```{r}
+#| echo: false
+
+tidy(m1, conf.int = TRUE) %>% 
+  mutate(across(where(is.numeric), ~round(., 2))) %>% tt() %>% style_tt(fontsize = .6)
+
+```
+
+Wenn alle unabhängigen Variablen den Wert 0 annehmen, wird der AfD-Anteil auf `r round(m1$coefficients["(Intercept)"],2)` geschätzt. Warum ist das nicht besonders aussagekräftig?
+
+```{r}
+#| echo: true
+
+# Anteil in O-D bei mittlerer WBT und niedrigem Abi-Anteil
+m1$coefficients["(Intercept)"] + m1$coefficients["wbt"] * mean(wkr_daten$wbt, na.rm=TRUE)
+
+```
+## Variablen vorab zentrieren
+
+```{r}
+#| echo: true
+
+wkr_daten <- wkr_daten %>% 
+  mutate(wbt_c = wbt - mean(wbt, na.rm = TRUE)) # Mittelwert abziehen
+
+m1 <- lm(afd_perc ~ wbt_c + region + bildung, data = wkr_daten)
+
+round(m1$coefficients["(Intercept)"],4)
+
+```
+
+
 ## Ergebnisse des Regressionsmodells speichern
 
 ```{r}
@@ -234,13 +295,27 @@ tidy(m1, conf.int = TRUE) %>%
 coef_m1 <- tidy(m1, conf.int = TRUE)%>% 
   mutate(across(where(is.numeric), ~round(., 2)))
 
+coef_m1 %>% tt() %>% style_tt(fontsize = .6)
+
+```
+
+## Variablennamen ändern
+
+Der Output von `tidy()` ist mit den `tidyverse()`-Bibliotheken kompatibel, wir können den Datensatz also bearbeiten:
+
+```{r}
+#| echo: true
+
+coef_m1 <- coef_m1 %>% 
+  mutate(term = recode(term, wbt_c = "Wahlbeteiligung"))
+
 head(coef_m1) %>% tt() %>% style_tt(fontsize = .6)
 
 ```
 
 ## Koeffizienten darstellen
 
-Erstellen Sie nun ein Diagramm, das die Namen der Koeffizienten auf der einen Achse abträgt und den Wert des Koeffizienten als Punkt im Diagramm darstellt.
+Erstellen Sie nun mit dem Datensatz `coef_m1` eine Grafik, das die Namen der Koeffizienten auf der einen Achse abträgt und den Wert des Koeffizienten als Punkte im Diagramm darstellt.
 
 ## Koeffizienten darstellen
 
@@ -252,11 +327,13 @@ ggplot(data = coef_m1,
        aes(x = term, 
            y = estimate))+
   geom_point(size = 3)+
-  theme_light()
+  theme_light(base_size = 20) 
 
 ```
 
-## Koeffizienten darstellen
+Der Zusatz "base_size = 20" ist nur notwendig, um die Grafik auf den Folien lesbar zu halten.
+
+## Koeffizienten ohne Achsenabschnitt (= Intercept) darstellen
 
 ```{r}
 #| echo: true
@@ -267,11 +344,11 @@ coef_m1 %>%
 ggplot(aes(x = term, 
            y = estimate))+
   geom_point(size = 3)+
-  theme_light()
+  theme_light(base_size = 20)
 
 ```
 
-Wie können wir das Konfidenzintervall darstellen?
+Wie können wir die Konfidenzintervalle zustätzlich darstellen?
 
 ## Koeffizienten grafisch darstellen
 
@@ -287,7 +364,7 @@ ggplot(aes(x = term, y = estimate))+
   geom_linerange(aes(ymin = conf.low, 
                      ymax = conf.high))+
   geom_point(size = 3, color = "orange")+
-  theme_light()
+  theme_light(base_size = 20)
 
 ```
 
@@ -303,40 +380,26 @@ ggplot(aes(x = term, y = estimate))+
   geom_hline(yintercept = 0, 
              color = "grey70")+
   geom_linerange(aes(ymin = conf.low, 
-                     ymax = conf.high))+
+                     ymax = conf.high),
+                 linewidth = .9)+
   geom_point(size = 3, 
              color = "orange")+
-  theme_light()+
+  theme_light(base_size = 20)+
   coord_flip()
-
-```
-
-
-## Variablennamen ändern
-
-Der Output von `tidy()` ist mit den `tidyverse()`-Bibliotheken kompatibel, wir können den Datensatz also bearbeiten:
-
-```{r}
-#| echo: true
-
-coef_m1 <- coef_m1 %>% 
-  mutate(term = recode(term, wbt = "Wahlbeteiligung"))
-
-head(coef_m1) %>% tt() %>% style_tt(fontsize = .6)
 
 ```
 
 ## `modelsummary` nutzt `broom`!
 
-Statt die Daten selbst abzurufen, könnnen wir [modelsummary]{.alert} verwenden, das im Hintergrund ebenfalls [broom]{.alert} nutzt. Im Folgenden verwenden wir zwei Regressionsmodelle.
+Statt die Daten selbst abzurufen, könnnen wir [modelsummary](https://modelsummary.com/vignettes/get_started.html)  verwenden, das im Hintergrund ebenfalls [broom]{.alert} nutzt. Im Folgenden verwenden wir zwei Regressionsmodelle.
 
 ```{r}
 #| echo: true
 #| eval: false
 
 models <- list(
-  "Modell 1" = lm(afd_perc ~ wbt + alq, data = wkr_daten),
-  "Modell 2" = lm(afd_perc ~ wbt + alq + region, data = wkr_daten)
+  "Modell 1" = lm(afd_perc ~ wbt_c + bildung, data = wkr_daten), # Gleichheitszeichen!
+  "Modell 2" = lm(afd_perc ~ wbt_c + bildung + region, data = wkr_daten)
 )
 
 modelsummary(models) %>% style_tt(fontsize = .6)
@@ -349,9 +412,9 @@ modelsummary(models) %>% style_tt(fontsize = .6)
 
 models <- list(
   
-"Modell 1" = lm(afd_perc ~ wbt + alq, 
+"Modell 1" = lm(afd_perc ~ wbt_c + bildung, 
          data = wkr_daten),
-"Modell 2" = lm(afd_perc ~ wbt + alq + region, 
+"Modell 2" = lm(afd_perc ~ wbt_c + bildung + region, 
          data = wkr_daten)
 )
 
@@ -362,13 +425,14 @@ models <- list(
 #| eval: false
 
 coefname <- c(
-        'wbt'         = "Wahlbeteiligung (%)",
-        'alq'         = 'Arbeitslosenquote (%)',
-        'regionwest'  = 'Westdeutschland',
-        '(Intercept)' = 'Konstante')
+        'wbt_c'         = "Wahlbeteiligung (%)",
+        'bildungmittel' = 'mittlere Bildung',
+        'bildunghoch'   = 'hohe Bildung',
+        'regionwest'    = 'Westdeutschland',
+        '(Intercept)'   = 'Konstante')
 
 modelsummary(models,
-             estimate = "{estimate}{stars}",
+             estimate = "{estimate}{stars}", # Koeffiziente und Signifikanzsterne
              gof_omit = 'AIC|BIC|Log.Lik|F|RMSE', # Modellgüte-Parameter ausschließen
              coef_map = coefname) %>% # oben definierte Namen verwenden
    style_tt(fontsize = .6)
@@ -382,18 +446,34 @@ Auf der Webseite für [tinytable](https://vincentarelbundock.github.io/tinytable
 ```{r}
 #| echo: false
 
-coefname <- c('wbt' = "Wahlbeteiligung (%)",
-              'alq'    = 'Arbeitslosenquote (%)',
-              'regionwest'     = 'Westdeutschland',
-              '(Intercept)' = 'Konstante')
+coefname <- c(
+        'wbt_c'         = "Wahlbeteiligung (%)",
+        'bildungmittel' = 'mittlere Bildung',
+        'bildunghoch'   = 'hohe Bildung',
+        'regionwest'    = 'Westdeutschland',
+        '(Intercept)'   = 'Konstante')
 
 modelsummary(models,
-             estimate = "{estimate}{stars}",
+             estimate = "{estimate}{stars}", # Koeffiziente und Signifikanzsterne
              gof_omit = 'AIC|BIC|Log.Lik|F|RMSE', # Modellgüte-Parameter ausschließen
-             coef_map = coefname) %>%  # definierte Namen verwenden
-  style_tt(fontsize = .6)
+             coef_map = coefname) %>% # oben definierte Namen verwenden
+   style_tt(fontsize = .6)
 
 ```
+
+## Tabellen exportieren
+
+```{r}
+#| echo: true
+
+modelsummary(models,
+             estimate = "{estimate}{stars}", 
+             gof_omit = 'AIC|BIC|Log.Lik|F|RMSE', 
+             coef_map = coefname,
+             output = "table.docx") # als Word-Dokument speichern
+
+```
+
 
 ## Koeffizientenplot
 
@@ -404,71 +484,131 @@ Praktischerweise erlaubt [modelsummary]{.alert} es auch, Koeffizientenplots darz
 #| echo: true
 
 coefname <- c(
-        'regionwest' = 'Westdeutschland',
-        'wbt'        = "Wahlbeteiligung (%)",
-        'alq'        = 'Arbeitslosenquote (%)')
-
+        'regionwest'    = 'Westdeutschland',
+        'bildungmittel' = 'mittlere Bildung',
+        'bildunghoch'   = 'hohe Bildung',
+        'wbt_c'         = "Wahlbeteiligung (%)")
 
 modelplot(models, coef_map = coefname)+
   geom_vline(xintercept = 0, 
              color = "grey70")+
   labs(x = "Koeffizienten", 
        color = NULL)+
-  theme_light(base_size = 22)
+  theme_light(base_size = 20)
 
 ```
 
-# Ergebnisse grafisch präsentieren
+# Vorhergesagte Werte ermitteln
 
-## Vorhergesagte Mittelwerte
+## Wie hoch ist der AfD-Anteil in Ost- und Westdeutschland im Durchschnitt
+
+Zunächst schauen wir uns die Mittelwerte an, die sich aus den Rohdaten ermitteln lassen:
 
 ```{r}
 #| echo: true
 
-model <- lm(afd_perc ~ wbt + abitur + region, data = wkr_daten)
+wkr_daten %>% 
+  group_by(region) %>% 
+  summarise(mean = mean(afd_perc, na.rm = TRUE)) %>% 
+  mutate(mean = round(mean, 2)) %>% 
+  tt() %>% style_tt(fontsize = .6)
+
+```
+
+
+## Vorhergesagte (Mittel-)Werte
+
+```{r}
+#| echo: true
+
+model <- lm(afd_perc ~ wbt_c + bildung + region, data = wkr_daten)
 
 means <- estimate_means(model, by = "region")
 means %>% tt() %>% style_tt(fontsize = .6) %>% format_tt(digits = 2)
 
 ```
 
-## Geschätzter Mittelwert und Datenverteilung
+"Other predictors of the model that are not included here will be collapsed and 'averaged' over (the effect will be estimated across them)." Die Werte berücksichtigen den durchschnittlichen Effekt der anderen Variablen.
 
-```{r}
-
-ggplot(wkr_daten, aes(x = region, y = afd_perc)) +
-  geom_violin(aes(fill = region), color = "white") +
-  geom_jitter(width = 0.05, height = 0, alpha = 0.4, size = 2) +
-  geom_pointrange(
-    data = means,
-    aes(y = Mean, ymin = CI_low, ymax = CI_high),
-    size = 0.8,
-    color = "white"
-  ) +
-  scale_fill_manual(values = c("pink", "lightblue", "lightgreen")) +
-  theme_minimal()
-
-```
-
-## Kontraste
-
-```{r}
-
-model <- lm(afd_perc ~ wbt + region, data = wkr_daten)
-
-contrasts <- estimate_contrasts(model, contrast = "region")
-contrasts %>% mutate(across(where(is.numeric), ~ round(., 2))) %>% tt()
-
-```
-
-# Interaktionseffekte
-
-## Vorhergesagte Werte in einer Tabelle
+## Vorhergesagte (Mittel-)Werte
 
 ```{r}
 #| echo: true
 
-model <- lm(afd_perc ~ wbt + region * bildung, data = wkr_daten)
+model <- lm(afd_perc ~ wbt_c + bildung + region, data = wkr_daten)
+
+means <- estimate_means(model, by = "bildung")
+means %>% tt() %>% style_tt(fontsize = .6) %>% format_tt(digits = 3)
+
+```
+
+
+```{r}
+
+model$coefficients["bildunghoch"]
+
+```
+
+## Geschätzter Mittelwert und Datenverteilung
+
+```{r}
+#| echo: true
+#| eval: false
+
+ggplot(wkr_daten, aes(x = region, y = afd_perc)) +
+  geom_violin(aes(fill = region), color = "white") +
+  geom_jitter(width = 0.05, height = 0, alpha = 0.2, size = 2) +
+  geom_pointrange(
+    data = means,
+    aes(y = Mean, ymin = CI_low, ymax = CI_high),
+    size = 0.8,
+    color = "white", linewidth = 0.9
+  ) +
+  scale_y_continuous(limits = c(0, 35)) +
+  scale_fill_manual(values = c("pink", "lightgreen")) +
+  theme_minimal()+
+  guides(fill = "none")
+
+```
+
+## Geschätzter Mittelwert und Datenverteilung
+
+```{r}
+#| echo: false
+
+ggplot(wkr_daten, aes(x = region, y = afd_perc)) +
+  geom_violin(aes(fill = region), color = "white") +
+  geom_jitter(width = 0.05, height = 0, alpha = 0.2, size = 2) +
+  geom_pointrange(
+    data = means,
+    aes(y = Mean, ymin = CI_low, ymax = CI_high),
+    size = 0.8,
+    color = "white", linewidth = 0.9
+  ) +
+  scale_y_continuous(limits = c(0, 35)) +
+  scale_fill_manual(values = c("pink", "lightgreen")) +
+  theme_minimal()+
+  guides(fill = "none")
+
+```
+
+## Kontraste (Unterschiede zwischen Gruppen)
+
+```{r}
+
+contrasts <- estimate_contrasts(model, contrast = "region") # Differenz der Gruppen
+contrasts %>% mutate(across(where(is.numeric), ~ round(., 2))) %>% tt()
+
+```
+
+## Vorhergesagte Werte in einer Tabelle
+
+Nun erweitern wir das Modell, indem wir einen Interaktionseffek hinzufügen.
+```{r}
+#| echo: true
+
+model <- lm(afd_perc ~ wbt_c + region * bildung, # Interaktionseffekt
+            data = wkr_daten)
 
 estimate_means(model, by = c("region", "bildung")) %>% 
   tt() %>% style_tt(fontsize = 0.6)
@@ -512,7 +652,6 @@ estimate_means(model, by = c("region", "bildung")) %>%
 #| echo: true
 #| output-location: column
 
-
 estimate_means(model, by = c("region", "bildung")) %>% 
   ggplot(aes(x = bildung, y = Mean, 
                ymin = CI_low, ymax = CI_high, 
@@ -525,6 +664,7 @@ estimate_means(model, by = c("region", "bildung")) %>%
   theme_bw()
 
 ```
+
 ## Kontraste bei Interaktionseffekten (kategorial * kategorial)
 
 ```{r}
@@ -548,6 +688,7 @@ difference  %>% tt() %>%
 ```{r}
 #| echo: true
 #| eval: false
+
 difference$contrast <- paste(difference$Level1, "-", difference$Level2)
 
 ggplot(data = difference,  aes(x = contrast, y = Difference, 
