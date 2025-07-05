@@ -53,7 +53,19 @@ In dieser und in der kommenden Sitzung befassen wir uns mit Regressionsmodellen.
 
 4. Wie lassen sich Interaktionseffekte interpretieren und visualisieren?
 
-## Zur Vorbereitung
+## Zur Vorbereitung I
+
+Fügen Sie bitte dem Ordner "Datavis" die Unterordner "tables" sowie "figs" hinzu.
+
+```{r}
+#| out-width: 35%
+#| fig-align: center
+
+knitr::include_graphics(here("pics", "ordner2.png"))
+
+```
+
+## Zur Vorbereitung II
 
 Um Regressionstabellen und -modelle darstellen zu können, benötigen wir einige Bibliotheken, die wir bislang noch nicht verwendet haben. Dazu gehören `broom`, `modelsummary`, `marginaleffects`, `datawizard` sowie `modelbased`, die zunächst installiert werden müssen.
 
@@ -470,7 +482,7 @@ modelsummary(models,
              estimate = "{estimate}{stars}", 
              gof_omit = 'AIC|BIC|Log.Lik|F|RMSE', 
              coef_map = coefname,
-             output = "table.docx") # als Word-Dokument speichern
+             output = here("tables", "table.docx")) # als Word-Dokument speichern
 
 ```
 
@@ -499,6 +511,12 @@ modelplot(models, coef_map = coefname)+
 ```
 
 # Vorhergesagte Werte ermitteln
+
+## `Predicted values` und `marginal effects`
+
+Leider werde Begriffe in der Statistik häufig uneinheitlich verwendet. Insbesondere der Begriff "marginale Effekte" hat zahlreiche unterschiedliche Verwendungen.^[Mehr hierzu im Blog von [Andrew Heiss](https://www.andrewheiss.com/blog/2022/05/20/marginalia/).] Wir verstehen unter marginalen Effekten die Änderung des Erwartungswerts der abhängigen Variable bei einer kleinen (bzw. diskreten) Änderung einer unabhängigen Variable, unter Konstanthaltung der übrigen Variablen.
+
+In linearen Modellen entspricht der Regressionskoeffizient dem marginalen Effekt. In nichtlinearen Modellen (z.B. bei logistischen Regressionsmodellen) ist das jedoch nicht der Fall, da der *Effekt der unabhängigen Variable* in Abhängigkeit vom Niveau anderer Variablen variiert. Bei logistischen Modellen müssen marginale Effekte deshalb separat berechnet werden.
 
 ## Wie hoch ist der AfD-Anteil in Ost- und Westdeutschland im Durchschnitt
 
@@ -537,8 +555,8 @@ means %>% tt() %>% style_tt(fontsize = .6) %>% format_tt(digits = 2)
 
 model <- lm(afd_perc ~ wbt_c + bildung + region, data = wkr_daten)
 
-means <- estimate_means(model, by = "bildung")
-means %>% tt() %>% style_tt(fontsize = .6) %>% format_tt(digits = 3)
+means_bild <- estimate_means(model, by = "bildung")
+means_bild %>% tt() %>% style_tt(fontsize = .6) %>% format_tt(digits = 3)
 
 ```
 
@@ -562,8 +580,7 @@ ggplot(wkr_daten, aes(x = region, y = afd_perc)) +
     data = means,
     aes(y = Mean, ymin = CI_low, ymax = CI_high),
     size = 0.8,
-    color = "white", linewidth = 0.9
-  ) +
+    color = "white", linewidth = 0.9) +
   scale_y_continuous(limits = c(0, 35)) +
   scale_fill_manual(values = c("pink", "lightgreen")) +
   theme_minimal()+
@@ -592,18 +609,28 @@ ggplot(wkr_daten, aes(x = region, y = afd_perc)) +
 
 ```
 
-## Kontraste (Unterschiede zwischen Gruppen)
+## Kontraste = marginaler Effekt
 
 ```{r}
+#| echo: true
+
+contrasts <- estimate_contrasts(model, contrast = "bildung") # Differenz der Gruppen
+contrasts %>% mutate(across(where(is.numeric), ~ round(., 2))) %>% tt() %>% style_tt(fontsize = .6)
+
+```
+
+
+```{r}
+#| echo: true
 
 contrasts <- estimate_contrasts(model, contrast = "region") # Differenz der Gruppen
-contrasts %>% mutate(across(where(is.numeric), ~ round(., 2))) %>% tt()
+contrasts %>% mutate(across(where(is.numeric), ~ round(., 2))) %>% tt() %>% style_tt(fontsize = .6)
 
 ```
 
 ## Vorhergesagte Werte in einer Tabelle
 
-Nun erweitern wir das Modell, indem wir einen Interaktionseffek hinzufügen.
+Nun erweitern wir das Modell, indem wir einen Interaktionseffekt hinzufügen.
 ```{r}
 #| echo: true
 
@@ -661,11 +688,11 @@ estimate_means(model, by = c("region", "bildung")) %>%
   scale_color_viridis_d(option = "inferno", begin = .2, end = .7)+
   scale_y_continuous(limits = c(0, 30))+
   labs(x = "Bildung", y = "Vorhergesagter Wert")+
-  theme_bw()
+  theme_bw(base_size = 20)
 
 ```
 
-## Kontraste bei Interaktionseffekten (kategorial * kategorial)
+## Kontraste bei Interaktionseffekten
 
 ```{r}
 #| echo: true
@@ -683,23 +710,24 @@ difference  %>% tt() %>%
 
 ```
 
-## Kontraste bei Interaktionseffekten (kategorial * kategorial)
+## Kontraste bei Interaktionseffekten
 
 ```{r}
 #| echo: true
 #| eval: false
 
-difference$contrast <- paste(difference$Level1, "-", difference$Level2)
+difference <- difference %>% 
+  mutate(contrast = paste(difference$Level1, "-", difference$Level2)) # neue Bezeichnung
 
 ggplot(data = difference,  aes(x = contrast, y = Difference, 
            ymin = CI_low, ymax = CI_high, color = region))+
-  geom_hline(yintercept = 0, color = "grey70", ewidth = 1.2)+
+  geom_hline(yintercept = 0, color = "grey70", linewidth = 1.2)+
   geom_pointrange(position = position_dodge(width = 0.12), fatten = 6)+
   theme_light()
 
 ```
 
-## Kontraste bei Interaktionseffekten (kategorial * kategorial)
+## Kontraste bei Interaktionseffekten
 
 ```{r}
 #| echo: false
@@ -708,33 +736,34 @@ difference$contrast <- paste(difference$Level1, "-", difference$Level2)
 
 ggplot(data = difference,  aes(x = contrast, y = Difference, 
            ymin = CI_low, ymax = CI_high, color = region))+
-  geom_hline(yintercept = 0, color = "grey70", ewidth = 1.2)+
+  geom_hline(yintercept = 0, color = "grey70", linewidth = 1.2)+
   geom_pointrange(position = position_dodge(width = 0.12), fatten = 6)+
-  theme_light()
+  theme_light(base_size = 20)
 
 ```
 
-## Kontraste bei Interaktionseffekten (kontinuierlich * kategorial)
+## Margainale Effekte bei Interaktionen
 
 ```{r}
 #| echo: true
 #| output-location: column
 
-model <- lm(afd_perc ~ wbt * region + abitur, data = wkr_daten)
+model <- lm(afd_perc ~ wbt * region + abitur, 
+            data = wkr_daten)
 
 difference <- estimate_contrasts(
   model,
   contrast = "region",
   by = "wbt",
-  length = 5
-) %>% mutate(across(where(is.numeric), ~ round(., 2)))
+  length = 5) %>% # 5 Werte für WBT
+  mutate(across(where(is.numeric), ~ round(., 2)))
 
 difference  %>% tt() %>% 
   style_tt(fontsize = 0.6)
 
 ```
 
-## Marginaler Effekt der Region
+## Marginaler Effekt der Region (5 Werte für WBT)
 
 ```{r}
 #| echo: true
@@ -748,9 +777,33 @@ ggplot(data = difference,
   geom_hline(yintercept = 0, 
              color = "grey70")+
   geom_pointrange()+
-  theme_bw()
+  theme_bw(base_size = 20)
 
 ```
+
+## Marginaler Effekt der Region (100 Werte für WBT)
+
+```{r}
+#| echo: true
+#| output-location: column
+
+estimate_contrasts(
+  model,
+  contrast = "region",
+  by = "wbt",
+  length = 100) %>% # 100
+  ggplot(aes(x = wbt,
+           y = Difference,
+           ymin = CI_low,
+           ymax = CI_high))+
+  geom_hline(yintercept = 0, 
+             color = "grey70")+
+  geom_pointrange()+
+  theme_bw(base_size = 20)
+
+
+```
+
 
 ## Vorhergesagte Werte nach Region
 
@@ -765,7 +818,7 @@ estimate_means(model, by = c("region", "wbt")) %>%
   geom_ribbon(alpha = 0.5)+
   geom_line(aes(color = region))+
   scale_y_continuous(limits = c(0,30))+
-  theme_light()+
+  theme_light(base_size = 20)+
   theme(panel.grid.minor = element_blank())
 
 ```
@@ -789,10 +842,35 @@ estimate_contrasts(
   geom_ribbon(fill = "lightblue", 
               alpha = 0.5)+
   geom_line(color = "blue")+
-  theme_minimal()
+  theme_minimal(base_size = 20)
 
 
 ```
+
+## Grafiken exportieren
+
+```{r}
+#| echo: true
+#| eval: false
+
+estimate_contrasts(
+  model,
+  contrast = "region",
+  by = "wbt",
+  length = 100) %>% 
+  ggplot(aes(x = wbt, y = Difference, ymin = CI_low, ymax = CI_high))+
+  geom_hline(yintercept = 0, color = "grey70")+
+  geom_ribbon(fill = "lightblue", alpha = 0.5)+ # für Konfidenzintervalle
+  geom_line(color = "blue")+
+  theme_minimal(base_size = 20)
+
+ggsave(here("figs", "tbl-meffwbt.png"),
+       units = c("in"),
+       width = 6, height=4,
+       dpi=300, bg = "white")
+
+```
+
 
 ##
 
