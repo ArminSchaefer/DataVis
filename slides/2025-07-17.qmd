@@ -1,0 +1,332 @@
+---
+title: Datenvisualisierung mit R
+subtitle: Regressionen & logistische Regressionen
+format: clean-revealjs
+highlight-style: tango
+auto-stretch: false
+execute:
+  echo: true
+author:
+  - name: Armin Schäfer
+    orcid: 0000-0002-2538-0092
+    email: schaefer@politik.uni-mainz.de
+center: true
+standalone: true
+embed-resources: true
+from: markdown+emoji
+footer: "Datenvisualisierung"
+logo: ../../../logo_polwi.jpg
+date: 07/17/2025
+date-format: DD.MM.YYYY
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| include: false
+
+if(!require("pacman")) {install.packages("pacman");library(pacman)}
+p_load(here, broom, rio, modelsummary, marginaleffects, modelbased, tinytable, gt, patchwork, tidyverse)
+
+my_theme <- function(...) theme(
+  plot.title = element_text(color = "black", 
+                            size = 14,
+                            face = "bold"),
+  axis.text = element_text(color = "black", 
+                           size = 12),
+  axis.title = element_text(color = "black",
+                            face = "bold",
+                            size = 12),
+  panel.grid.minor = element_blank())
+
+```
+
+
+# Logistische Regressionen
+
+## Drei Schritte
+
+1. Modell schätzen
+
+2. Koeffizienten plotten
+
+3. Predicted probabilities
+
+## Anwendungsbeispiel: Wahl der Grünen
+
+Wir verwenden einen Ausschnitt der *German Logitudinal Election Study* von 2021, bei der das Wahlverhalten bei der Bundestagswahl abgefragt wurde. Wir schätzen, mit welcher Wahrscheinlichkeit Befragte <span style="color:green;">Bündnis 90/Die Grünen</span> gewählt haben.
+
+Bitten laden Sie den Datensatz `gles21vwnw.csv` aus Moodle herunter und lesen Sie ihn unter dem Namen `gles21` ein.
+
+```{r}
+#| echo: true
+
+gles21 <- import(here("data", "gles21vwnw.csv"))
+
+```
+
+## Die abhängige Variable
+
+Im Datensatz findet sich die Variable *pwahl21*, in der enthalten ist, welche Parteien die Befragten gewählt haben. Sie nutzen wir, um eine neue Variable zu erstellen, die den Wert "1" annimmt, wenn jemand die Grünen gewählt hat, und "0", falls nicht.
+
+Überprüfen Sie Ihr Wissen: Wie machen Sie das?
+
+## Die abhängige Variable
+
+```{r}
+#| echo: true
+
+gles21 <- gles21 %>% 
+  mutate(gruen = ifelse(pwahl21=="Grüne", 1, 0),
+         bildung = fct_relevel(bildung, "niedrig", "mittel", "hoch"),
+         geschlecht = ifelse(frau == 1, "weiblich", "männlich"))
+
+mean(gles21$gruen, na.rm=TRUE) # 19,7 Prozent haben die Grünen gewählt
+
+```
+
+## Drei Hypothesen
+
+*Hypothese 1*: Frauen wählen mit höherer Wahrscheinlichkeit B90/Die Grünen als Männer.
+
+*Hypothese 2*: Je höher das Bildungsniveau, desto höher die Wahrscheinlichkeit, die Grünen zu wählen.
+
+*Hypothese 3*: Der Effekt des Geschlechts nimmt mit dem Bildungsgrad zu (höher gebildete Frauen wählen die Grünen mit der höchsten Wahrscheinlichkeit). 
+
+## Das Regressionsmodell
+
+Die Syntax bei logistischen Regression ähnelt der von linearen Modellen. Statt **`lm`** verwenden wir den allgemeineren Befehl **`glm`** und geben an, welche Art von Modell geschätzt wird -- in diesem Fall ein binomiales (die AV hat nur die Ausprägungen "0" und "1").
+
+```{r}
+#| echo: true
+
+l1 <-  glm(gruen ~ alter + geschlecht + bildung + ost, 
+           data = gles21, family = binomial())
+
+```
+
+Wie zuvor lassen sich die Ergebnisse mit `summary(lm1)` anzeigen.
+
+## Zwei Modelle schätzen
+
+```{r}
+#| echo: true
+
+models <- list(
+  
+    "einfaches Modell" = glm(gruen ~ alter + geschlecht + bildung + ost, 
+               data = gles21, family = binomial()),
+    "Interaktion"      = glm(gruen ~ alter + geschlecht * bildung + ost, 
+               data = gles21, family = binomial())
+)
+
+```
+
+
+## Modelplot
+
+```{r}
+#| echo: true
+#| eval: false
+
+coefname <- c(
+        'geschlechtweiblich:bildunghoch'    = 'Frau * hohe Bildung',
+        'geschlechtweiblich:bildungmittel'  = 'Frau * mittlere Bildung',
+        'bildunghoch'                       = 'hohe Bildung',
+        'bildungmittel'                     = 'mittlere Bildung', 
+        'frau'                              = 'Frau',
+        'ostWest'                           = 'Westdeutschland',
+        'alter'                             = "Alter"
+        )
+
+
+modelplot(models, coef_map = coefname)+
+  geom_vline(xintercept = 0, color = "grey70")
+
+```
+
+## Modelplot
+
+```{r}
+#| echo: false
+
+coefname <- c(
+        'geschlechtweiblich:bildunghoch'    = 'Frau * hohe Bildung',
+        'geschlechtweiblich:bildungmittel'  = 'Frau * mittlere Bildung',
+        'bildunghoch'                       = 'hohe Bildung',
+        'bildungmittel'                     = 'mittlere Bildung', 
+        'frau'                              = 'Frau',
+        'ostWest'                           = 'Westdeutschland',
+        'alter'                             = "Alter"
+        )
+
+modelplot(models,  coef_map = coefname)+
+  geom_vline(xintercept = 0, color = "grey70")
+
+```
+## Predicted probabilities (vorhergesagte Werte)
+
+```{r}
+
+l1 <-  glm(gruen ~ alter + geschlecht * bildung + ost, 
+           data = gles21, family = binomial())
+
+pred_l1 <- estimate_means(l1, c("geschlecht", "bildung"))
+
+pred_l1 %>%  
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  tt() %>% style_tt(fontsize = .6)
+
+```
+
+## Grafik der vorhergesagten Wahrscheinlichkeiten
+
+Das Package `modelbased` beinhaltet einen Befehl, um die Werte darzustellen:^[Wir erstellen aber lieber unsere eigenen Grafiken ;-).]
+```{r}
+#| out-width: 60%
+
+plot(pred_l1)
+
+```
+## Grafik der vorhergesagten Wahrscheinlichkeiten
+
+```{r}
+#| echo: true
+#| output-location: column
+
+ggplot(data = pred_l1, 
+       aes( x = geschlecht, 
+            y = Probability,
+            ymin = CI_low, ymax = CI_high,
+            color = bildung))+
+  geom_pointrange()+
+  scale_y_continuous(labels = scales::percent)+
+  labs(x = NULL, color = NULL)+
+  theme_light(base_size = 20)+
+  guides(color = guide_legend(reverse = TRUE))
+
+```
+
+## Grafik der vorhergesagten Wahrscheinlichkeiten
+
+```{r}
+#| echo: true
+#| output-location: column
+
+ggplot(data = pred_l1, 
+       aes( x = bildung, 
+            y = Probability,
+            ymin = CI_low, ymax = CI_high,
+            color = geschlecht))+
+  geom_pointrange(position =
+                    position_dodge((width = 0.1)))+
+  scale_y_continuous(labels = scales::percent)+
+  labs(x = NULL, color = NULL)+
+  theme_light(base_size = 20)+
+  guides(color = guide_legend(reverse = TRUE))
+
+```
+
+## Signifikanter Unterschied?
+
+::: {.callout-warning title="Wichtig!"}
+Aus der Darstellung der "predicted probabilities" lässt sich nicht immer ablesen, ob der Unterschied zwischen Gruppen statistisch signifikant sind. Überlappenden Konfindenzintervalle lassen nicht zuverlässig den Schluss zu, dass kein signifikanter Effekt vorliegt! Um zu prüfen, ob die Unterschiede statistisch signifikant sind, müssen wir den Kontrast der Gruppen anschauen, also den 'marginalen Effekt'.
+:::
+
+## Alle Gruppenvergleiche
+```{r}
+
+estimate_contrasts(l1, c("bildung", "geschlecht")) %>% 
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  tt() %>% style_tt(fontsize = .6)
+
+```
+
+## Unterschiede zw. Frauen und Männern nach Bildung
+
+```{r}
+
+estimate_contrasts(l1, "geschlecht", by = "bildung") %>% 
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  tt() %>% style_tt(fontsize = .6)
+
+```
+
+## Unterschiede zw. Bildungsgruppen nach Geschlecht
+
+```{r}
+
+estimate_contrasts(l1, "bildung", by = "geschlecht") %>% 
+  mutate(across(where(is.numeric), ~ round(., 3))) %>%
+  tt() %>% style_tt(fontsize = .6)
+
+```
+
+## Marginale Effekte grafisch darstellen
+
+```{r}
+#| echo: true
+#| eval: false
+
+estimate_contrasts(l1, "geschlecht", by = "bildung") %>% 
+  mutate(sig = ifelse(p<0.05, "yes", "no")) %>% 
+  ggplot(aes(x = bildung, y = Difference,
+             ymin = CI_low, ymax = CI_high,
+             color = sig))+
+  geom_hline(yintercept = 0, color = "grey70")+
+  geom_pointrange()+
+  scale_color_manual(values = c("lightblue", "darkblue"))+
+  labs(x = "Bildung", y = "Marginaler Effekt des Geschlechts")+
+  theme_classic()+
+  guides(color = "none")
+
+```
+## Marginale Effekte grafisch darstellen
+
+```{r}
+#| echo: false
+
+estimate_contrasts(l1, "geschlecht", by = "bildung") %>% 
+  mutate(sig = ifelse(p<0.05, "yes", "no")) %>% 
+  ggplot(aes(x = bildung, y = Difference,
+             ymin = CI_low, ymax = CI_high,
+             color = sig))+
+  geom_hline(yintercept = 0, color = "grey70")+
+  geom_pointrange()+
+  scale_color_manual(values = c("lightblue", "darkblue"))+
+  labs(x = "Bildung", y = "Marginaler Effekt des Geschlechts")+
+  theme_classic()+
+  guides(color = "none")
+
+```
+
+## Sie sind dran
+
+Erstelllen Sie nun eine Abbildung, in der der marginale Effekt der Bildung in Abhängigkeit vom Geschlecht dargestellt wird.
+
+## Marginaler Effekt des Geschlechts abhängig vom Alter
+
+```{r}
+#| echo: true
+#| output-location: column
+
+l2 <- glm(gruen ~ alter * geschlecht + bildung + ost, 
+             data = gles21, 
+             family = binomial())
+
+estimate_contrasts(l2, "geschlecht", by = "alter",
+                   length = 100) %>% 
+  ggplot(aes(x = alter, y = Difference,
+             ymin = CI_low, ymax = CI_high))+
+  geom_hline(yintercept = 0, color = "grey70")+
+  geom_ribbon(fill = "cornflowerblue", alpha = 0.5)+
+  geom_line(color = "darkblue")+
+  labs(x = "Alter", y = "Marginaler Effekt des Geschlechts")+
+  theme_classic(base_size = 20)+
+  guides(color = "none")
+
+```
+
+## Ihre Aufgabe
+
+Überprüfen Sie anhand des Datensatzes, wie Geschlecht, Bildung und Alter mit der AfD-Wahl zusammenhängen. Testen Sie die Variablen zunächst einzeln, interagieren Sie dann Geschlecht und Alter sowie Geschlecht und Bildung. Probieren Sie die verschiedenen Darstellungsweisen aus.

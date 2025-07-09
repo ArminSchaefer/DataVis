@@ -43,7 +43,7 @@ my_theme <- function(...) theme(
 
 ## Regressionsmodelle
 
-In dieser und in der kommenden Sitzung befassen wir uns mit Regressionsmodellen. Zunächst schauen wir uns lineare Regression an, dann logistische. Für viele Fragestellungen in der Plitikwissenschaft reichen diese beiden Varianten aus -- oder zumindest bauen komplexere Modelle darauf auf. Wir konzentrieren uns auf drei Ziele:
+In dieser und in der kommenden Sitzung befassen wir uns mit Regressionsmodellen. Zunächst schauen wir uns lineare Regression an, dann logistische. Für viele Fragestellungen in der Plitikwissenschaft reichen diese beiden Varianten aus -- oder zumindest bauen komplexere Modelle darauf auf. Wir konzentrieren uns auf vier Ziele:
 
 1. Wie lassen sich die Ergebnisse in Tabellen zusammenfassen?
 
@@ -67,9 +67,9 @@ knitr::include_graphics(here("pics", "ordner2.png"))
 
 ## Zur Vorbereitung II
 
-Um Regressionstabellen und -modelle darstellen zu können, benötigen wir einige Bibliotheken, die wir bislang noch nicht verwendet haben. Dazu gehören `broom`, `modelsummary`, `marginaleffects`, `datawizard` sowie `modelbased`, die zunächst installiert werden müssen.
+Um Regressionstabellen und -modelle darstellen zu können, benötigen wir einige Bibliotheken, die wir bislang noch nicht verwendet haben. Dazu gehören `broom`, `modelsummary`, `datawizard` sowie `modelbased`, die zunächst installiert werden müssen.
 
-Damit Tabellen gut lesbar sind, benötigen wir das Paket `tt`.
+Damit Tabellen gut lesbar sind, benötigen wir das Paket `tinytable`.
 
 Wir verwenden heute den Datensatz `wkr_daten.csv`.
 
@@ -83,11 +83,13 @@ wkr_daten <- wkr_daten %>%
     abitur>=20 & abitur < 31.3   ~ "niedrig",
     abitur>=31.3 & abitur < 42.6 ~ "mittel",
     abitur>=42.6 & abitur < 54   ~ "hoch"),
-    bildung = fct_relevel(bildung, "niedrig", "mittel", "hoch")) %>% 
+    bildung = fct_relevel(bildung, "niedrig", "mittel", "hoch"),
+    # z-tranformierete Variaben (Mittelwert = 0, SD = 1)
+    abitur_z = (abitur - mean(abitur, na.rm = TRUE))/sd(abitur, na.rm = TRUE),
+    wbt_z    = (wbt - mean(wbt, na.rm = TRUE))/sd(wbt, na.rm = TRUE)) %>% 
     rename(region = ost)
   
 ```
-
 
 ## Ein erster Blick auf die Daten
 
@@ -288,13 +290,39 @@ m1$coefficients["(Intercept)"] + m1$coefficients["wbt"] * mean(wkr_daten$wbt, na
 
 ```{r}
 #| echo: true
+#| output-location: column
 
 wkr_daten <- wkr_daten %>% 
-  mutate(wbt_c = wbt - mean(wbt, na.rm = TRUE)) # Mittelwert abziehen
+  mutate(wbt_c = wbt - mean(wbt, na.rm = TRUE))
+
+wkr_daten %>% select(wbt, wbt_c) %>% 
+  pivot_longer(cols = everything(), 
+           names_to = "Variable", 
+           values_to = "Wert") %>% 
+  ggplot(aes(x = Wert, fill = Variable))+
+  geom_density(alpha = .4) + 
+  geom_vline(xintercept = mean(wkr_daten$wbt),
+             linetype = "dashed") +
+  geom_vline(xintercept = mean(wkr_daten$wbt_c),
+             linetype = "dashed") +
+  scale_x_continuous(limits = c(-20, 100)) +
+  labs(x = NULL, y = NULL) +
+  theme_minimal(base_size = 20)
+
+```
+## Regressionsmodell mit zentrierter Variable
+
+```{r}
+#| echo: true
 
 m1 <- lm(afd_perc ~ wbt_c + region + bildung, data = wkr_daten)
 
-round(m1$coefficients["(Intercept)"],4)
+tidy(m1, conf.int = TRUE) %>% 
+  mutate(across(where(is.numeric), ~round(., 2))) %>% tt() %>% 
+  style_tt(fontsize = .6) %>% 
+  style_tt(i = 1,   j = 1:7, background = "orange", color = "white", face = "bold") %>% 
+  style_tt(i = 2:5, j = 1:7, background = "blue",   color = "white", face = "bold") 
+  
 
 ```
 
@@ -628,9 +656,12 @@ contrasts %>% mutate(across(where(is.numeric), ~ round(., 2))) %>% tt() %>% styl
 
 ```
 
-## Vorhergesagte Werte in einer Tabelle
+# Interaktionseffekte
 
-Nun erweitern wir das Modell, indem wir einen Interaktionseffekt hinzufügen.
+## Erstes Interaktionsmodell
+
+Wenn wir ein Modell mit einem Interkationseffekt schätzen, würden wir im ersten Schritt die Ergebnisse in einer Tabelle oder als Koeffizientengrafik anschauen. Die Vorgehensweise folgt der oben dargestellten. Wir konzentrieren uns auf `predictions` und `marginale Effekte` und interagieren zunächst zwei Faktoren miteinander.
+
 ```{r}
 #| echo: true
 
@@ -673,7 +704,7 @@ estimate_means(model, by = c("region", "bildung")) %>%
 
 ```
 
-## Vorhergesagte Werte als Grafik
+## Vorhergesagte Werte als Grafik (alternative Darstellung)
 
 ```{r}
 #| echo: true
@@ -710,7 +741,7 @@ difference  %>% tt() %>%
 
 ```
 
-## Kontraste bei Interaktionseffekten
+## Marginale Effekte bei Interaktionseffekten
 
 ```{r}
 #| echo: true
@@ -727,7 +758,7 @@ ggplot(data = difference,  aes(x = contrast, y = Difference,
 
 ```
 
-## Kontraste bei Interaktionseffekten
+## Marginale Effekte bei Interaktionseffekten
 
 ```{r}
 #| echo: false
@@ -742,14 +773,36 @@ ggplot(data = difference,  aes(x = contrast, y = Difference,
 
 ```
 
-## Margainale Effekte bei Interaktionen
+## Vorhergesagte Werte nach Region
 
 ```{r}
 #| echo: true
 #| output-location: column
 
-model <- lm(afd_perc ~ wbt * region + abitur, 
+model <- lm(afd_perc ~ wbt * region + bildung, 
             data = wkr_daten)
+
+estimate_means(model, by = c("region", "wbt")) %>% 
+  ggplot(aes(x = wbt, y = Mean, 
+             ymin = CI_low, ymax = CI_high,
+             fill = region))+
+  geom_ribbon(alpha = 0.5)+
+  geom_line(aes(color = region))+
+  labs(fill = NULL, color = NULL,
+       x = "Wahlbeteiligung",
+       y = "Vorhergesagter Wert")+
+  scale_y_continuous(limits = c(0,30))+
+  theme_light(base_size = 20)+
+  theme(panel.grid.minor = element_blank())
+
+```
+
+
+## Marginale Effekte bei Interaktionen (kontinuierlich * kategorial)
+
+```{r}
+#| echo: true
+#| output-location: column
 
 difference <- estimate_contrasts(
   model,
@@ -804,25 +857,6 @@ estimate_contrasts(
 
 ```
 
-
-## Vorhergesagte Werte nach Region
-
-```{r}
-#| echo: true
-#| output-location: column
-
-estimate_means(model, by = c("region", "wbt")) %>% 
-  ggplot(aes(x = wbt, y = Mean, 
-             ymin = CI_low, ymax = CI_high,
-             fill = region))+
-  geom_ribbon(alpha = 0.5)+
-  geom_line(aes(color = region))+
-  scale_y_continuous(limits = c(0,30))+
-  theme_light(base_size = 20)+
-  theme(panel.grid.minor = element_blank())
-
-```
-
 ## Marginaler Effekt der Region
 
 ```{r}
@@ -860,7 +894,7 @@ estimate_contrasts(
   length = 100) %>% 
   ggplot(aes(x = wbt, y = Difference, ymin = CI_low, ymax = CI_high))+
   geom_hline(yintercept = 0, color = "grey70")+
-  geom_ribbon(fill = "lightblue", alpha = 0.5)+ # für Konfidenzintervalle
+  geom_ribbon(fill = "lightblue", alpha = 0.5) +
   geom_line(color = "blue")+
   theme_minimal(base_size = 20)
 
@@ -871,6 +905,83 @@ ggsave(here("figs", "tbl-meffwbt.png"),
 
 ```
 
+## Interaktion von zwei kontinuierlichen Variablen
+
+```{r}
+#| echo: true
+#| output-location: column
+
+model <- lm(afd_perc ~ wbt_z * abitur_z + region, 
+            data = wkr_daten)
+
+means <- estimate_means(model, 
+         c("wbt_z", "abitur_z=[sd]"))
+
+plot(means)+theme_minimal(base_size = 20)
+
+```
+## Wie hoch ist die Steigung?
+
+Der Effekt der WBT auf die AfD-Wahl hängt davon ab, wie hoch der Abiturient:innenanteil ist. Wir können uns die Steigung für verschiedene Werte der Abi-Anteils anzeigen lassen. Dazu verwenden wir die Funktion `estimate_slopes()` aus dem Paket [modelbased]{.alert}.
+
+```{r}
+#| echo: true
+
+estimate_slopes(model, trend = "wbt_z", by = "abitur_z=[sd]") %>% 
+  tt() %>% style_tt(fontsize = .6) %>% format_tt(digits = 2)
+
+```
+
+## Mehr als Mittelwert & Standardabweichung
+
+Wenn wir das Argument `length=` verwenden, werden immer das Minimum und das Maximum sowie Werte dazwischen in gleichmäßigem Abstand angezeigt. 
+
+```{r}
+#| echo: true
+
+estimate_slopes(model, "wbt_z", by = "abitur_z", length=6) %>% 
+  tt() %>% style_tt(fontsize = .6) %>% format_tt(digits = 3)
+
+```
+
+## Marginaler Effekt des Abi-Anteils
+
+```{r}
+#| echo: true
+#| output-location: column
+
+slopes <- estimate_slopes(model, 
+         "abitur_z", by = "wbt_z", length = 50)
+
+ggplot(data = slopes, aes( x = wbt_z, y = Slope,
+                           ymin = CI_low, ymax = CI_high))+
+  geom_hline(yintercept = 0, color = "grey70")+
+  geom_ribbon(fill = "blue", alpha = 0.3)+
+  geom_line(color = "blue")+
+  theme_classic(base_size = 20)
+
+```
+
+## Marginaler Effekt des Abi-Anteils (Johnson-Neyman Intervals)
+
+```{r}
+#| echo: true
+#| output-location: column
+
+slopes <- estimate_slopes(model, 
+         "abitur_z", by = "wbt_z", length = 50) %>% 
+  mutate(sig = ifelse(p < 0.05, "sig", "ns"))
+
+ggplot(data = slopes, aes( x = wbt_z, y = Slope,
+                           ymin = CI_low, ymax = CI_high,
+                           color = sig, fill = sig))+
+  geom_hline(yintercept = 0, color = "grey70")+
+  geom_ribbon(alpha = 0.3)+
+  geom_line()+
+  theme_classic(base_size = 20)+
+  guides(color = "none", fill = "none")
+
+```
 
 ##
 
